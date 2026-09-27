@@ -1,0 +1,829 @@
+<title>DebtJet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:opsz,wght@8..40,400;8..40,500;8..40,600;8..40,700&family=Sora:wght@400;500;600;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --bg:#F6F4EE;
+    --surface:#FFFFFF;
+    --surface-alt:#F0EAD6;
+    --border:#DCD6C6;
+    --border-strong:#C7C0AC;
+    --text:#1C2B33;
+    --text-muted:#5B6B72;
+    --text-faint:#8B9599;
+    --accent:#2E8FC4;
+    --accent-strong:#1F6E9C;
+    --accent-soft:#DCEEF8;
+    --warm:#F5B700;
+    --warm-soft:#FBF0CB;
+    --on-warm:#25200a;
+    --sidebar-bg:#1C2B33;
+    --sidebar-text:#CBD8DD;
+    --sidebar-text-dim:#7E939C;
+    --sidebar-active:#28404D;
+    --success:#2F8F5B;
+    --success-soft:#DFF2E6;
+    --warning:#B4790A;
+    --warning-soft:#FBEBD2;
+    --critical:#C1473C;
+    --critical-soft:#F8E1DE;
+    --info:#3E5C76;
+    --info-soft:#E4E9EE;
+    --shadow:0 1px 2px rgba(28,43,51,.06), 0 4px 14px rgba(28,43,51,.05);
+    --radius:10px;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#141F27; --surface:#1B2830; --surface-alt:#22323C; --border:#33454F; --border-strong:#425864;
+      --text:#EAE6D9; --text-muted:#A8B7BE; --text-faint:#78878E;
+      --accent:#5CACDD; --accent-strong:#7FC0E8; --accent-soft:#203847;
+      --warm:#F0C23B; --warm-soft:#3A3115; --on-warm:#241d08;
+      --sidebar-bg:#0F1820; --sidebar-text:#C3D1D6; --sidebar-text-dim:#647880; --sidebar-active:#1D2E38;
+      --success:#5BC48C; --success-soft:#1C3327; --warning:#E3A736; --warning-soft:#3A2C10;
+      --critical:#E38178; --critical-soft:#3A211E; --info:#8FA8BE; --info-soft:#22303B;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.35);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141F27; --surface:#1B2830; --surface-alt:#22323C; --border:#33454F; --border-strong:#425864;
+    --text:#EAE6D9; --text-muted:#A8B7BE; --text-faint:#78878E;
+    --accent:#5CACDD; --accent-strong:#7FC0E8; --accent-soft:#203847;
+    --warm:#F0C23B; --warm-soft:#3A3115; --on-warm:#241d08;
+    --sidebar-bg:#0F1820; --sidebar-text:#C3D1D6; --sidebar-text-dim:#647880; --sidebar-active:#1D2E38;
+    --success:#5BC48C; --success-soft:#1C3327; --warning:#E3A736; --warning-soft:#3A2C10;
+    --critical:#E38178; --critical-soft:#3A211E; --info:#8FA8BE; --info-soft:#22303B;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:"Sora",-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.5;}
+  h1,h2,h3,.display{font-family:"Spectral",Georgia,serif;font-weight:600;text-wrap:balance;letter-spacing:-0.005em;}
+  button{font-family:inherit;}
+  ::selection{background:var(--accent-soft);}
+  input,select{font-family:inherit;}
+
+  .app{display:flex;min-height:100dvh;}
+  .app[hidden]{display:none;}
+
+  /* AUTH / ONBOARDING */
+  .auth-shell{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg);}
+  .auth-shell[hidden]{display:none;}
+  .auth-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:30px 28px;}
+  .auth-card h1{font-size:22px;margin:14px 0 4px;text-align:center;}
+  .auth-card .sub{color:var(--text-muted);font-size:13px;text-align:center;margin:0 0 20px;}
+  .auth-card form{display:flex;flex-direction:column;gap:12px;}
+  .auth-card label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--text-muted);}
+  .auth-card input{border:1px solid var(--border-strong);border-radius:8px;padding:9px 11px;font-size:13.5px;background:var(--surface);color:var(--text);}
+  .auth-message{margin-top:12px;font-size:12.5px;padding:9px 11px;border-radius:8px;background:var(--info-soft);color:var(--info);}
+  .auth-message.error{background:var(--critical-soft);color:var(--critical);}
+  .auth-logo{display:flex;justify-content:center;}
+
+  /* SIDEBAR */
+  .sidebar{width:236px;flex:0 0 236px;background:var(--sidebar-bg);color:var(--sidebar-text);display:flex;flex-direction:column;padding:20px 14px;gap:22px;position:sticky;top:0;height:100dvh;}
+  .brand{display:flex;align-items:center;gap:10px;padding:0 8px;}
+  .brand-name{font-family:"Spectral",serif;font-weight:600;font-size:19px;color:#F6F4EE;letter-spacing:-0.01em;}
+  .nav{display:flex;flex-direction:column;gap:2px;}
+  .nav-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--sidebar-text-dim);padding:14px 12px 6px;}
+  .nav-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;color:var(--sidebar-text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px;transition:background .12s ease;}
+  .nav-btn:hover{background:var(--sidebar-active);}
+  .nav-btn.active{background:var(--sidebar-active);color:#fff;font-weight:600;}
+  .nav-btn .ic{width:17px;height:17px;flex:0 0 auto;opacity:.9;}
+  .sidebar-foot{margin-top:auto;padding:12px 8px 4px;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:8px;}
+  .who-row{display:flex;align-items:center;gap:10px;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--warm);color:var(--on-warm);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;flex:0 0 auto;}
+  .who{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
+  .who b{color:#F6F4EE;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .who span{color:var(--sidebar-text-dim);font-size:11px;}
+  .signout-btn{background:transparent;border:1px solid rgba(255,255,255,.16);color:var(--sidebar-text);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;}
+  .signout-btn:hover{background:var(--sidebar-active);}
+
+  /* MAIN */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .topbar{display:flex;align-items:center;gap:16px;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:5;}
+  .topbar h1{font-size:20px;margin:0;flex:0 0 auto;}
+  .topbar .sub{color:var(--text-muted);font-size:12.5px;margin-top:2px;}
+  .search{flex:1;max-width:360px;display:flex;align-items:center;gap:8px;background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text-muted);margin-left:auto;}
+  .search input{border:none;background:transparent;outline:none;color:var(--text);font-size:13px;width:100%;}
+  .btn{display:inline-flex;align-items:center;gap:7px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer;white-space:nowrap;transition:transform .08s ease, background .12s ease;}
+  .btn:hover{background:var(--surface-alt);}
+  .btn:active{transform:scale(.98);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn.primary:hover{background:var(--accent-strong);border-color:var(--accent-strong);}
+  .btn.ghost{border-color:transparent;background:transparent;}
+  .btn.ghost:hover{background:var(--surface-alt);}
+  .btn.sm{padding:6px 11px;font-size:12.5px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn:disabled:hover{background:var(--surface);}
+
+  .view{padding:24px 28px 60px;max-width:1180px;}
+  .view[hidden]{display:none;}
+
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);}
+  .kpi .label{font-size:12px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+  .kpi .value{font-family:"Spectral",serif;font-size:26px;font-weight:600;margin-top:6px;font-variant-numeric:tabular-nums;}
+  .kpi .delta{font-size:12px;margin-top:6px;color:var(--text-faint);}
+
+  .grid-2{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;align-items:start;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+  .card-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;}
+  .card-head h3{font-size:15.5px;margin:0;}
+  .card-body{padding:6px 18px 18px;}
+
+  .aging-chart{display:flex;align-items:flex-end;gap:18px;height:150px;padding:10px 6px 0;}
+  .aging-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;}
+  .aging-bar .bar{width:100%;max-width:52px;border-radius:6px 6px 3px 3px;background:var(--accent);}
+  .aging-bar.b1 .bar{background:var(--accent);}
+  .aging-bar.b2 .bar{background:var(--warm);}
+  .aging-bar.b3 .bar{background:var(--warning);}
+  .aging-bar.b4 .bar{background:var(--critical);}
+  .aging-bar .amt{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .aging-bar .lbl{font-size:11.5px;color:var(--text-muted);}
+
+  .activity{display:flex;flex-direction:column;gap:14px;}
+  .activity-item{display:flex;gap:10px;font-size:12.5px;}
+  .activity-item .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);margin-top:5px;flex:0 0 auto;}
+  .activity-item .t{color:var(--text-faint);font-size:11.5px;}
+  .empty-note{color:var(--text-faint);font-size:12.5px;padding:8px 0;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{text-align:left;color:var(--on-warm);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:9px 10px;background:var(--warm);border-bottom:1px solid var(--border-strong);}
+  thead th:first-child{border-top-left-radius:6px;border-bottom-left-radius:6px;}
+  thead th:last-child{border-top-right-radius:6px;border-bottom-right-radius:6px;}
+  tbody td{padding:11px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.clickable{cursor:pointer;transition:background .1s ease;}
+  tbody tr.clickable:hover{background:var(--surface-alt);}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .name-cell{font-weight:700;background:var(--warm-soft);border-radius:6px;}
+  .name-cell .sub{font-weight:400;color:var(--text-faint);font-size:11.5px;}
+
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap;}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .pill.new{background:var(--info-soft);color:var(--info);}
+  .pill.letter_sent{background:var(--accent-soft);color:var(--accent-strong);}
+  .pill.awaiting_response{background:var(--warning-soft);color:var(--warning);}
+  .pill.payment_plan{background:var(--success-soft);color:var(--success);}
+  .pill.escalated{background:var(--critical-soft);color:var(--critical);}
+  .pill.resolved{background:var(--success-soft);color:var(--success);}
+  .pill.connected{background:var(--success-soft);color:var(--success);}
+  .pill.not_connected{background:var(--surface-alt);color:var(--text-muted);}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .chip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:12.5px;cursor:pointer;color:var(--text-muted);}
+  .chip.active{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:600;}
+
+  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--accent);background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;padding:0;margin-bottom:14px;}
+
+  .detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+  .detail-head h2{font-size:24px;margin:0 0 4px;}
+  .detail-head .meta{color:var(--text-muted);font-size:13px;}
+  .action-row{display:flex;gap:8px;flex-wrap:wrap;}
+
+  .info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;}
+  .info-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);}
+  .info-box .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:600;}
+  .info-box .v{font-size:16px;margin-top:5px;font-weight:600;font-variant-numeric:tabular-nums;}
+  .info-box .v.small{font-size:13.5px;font-weight:500;}
+
+  .timeline{display:flex;flex-direction:column;}
+  .tl-item{display:flex;gap:14px;position:relative;padding-bottom:22px;}
+  .tl-item:last-child{padding-bottom:0;}
+  .tl-item::before{content:"";position:absolute;left:6.5px;top:18px;bottom:0;width:1.5px;background:var(--border);}
+  .tl-item:last-child::before{display:none;}
+  .tl-dot{width:14px;height:14px;border-radius:50%;background:var(--accent-soft);border:2px solid var(--accent);flex:0 0 auto;margin-top:2px;}
+  .tl-dot.warn{background:var(--warning-soft);border-color:var(--warning);}
+  .tl-dot.crit{background:var(--critical-soft);border-color:var(--critical);}
+  .tl-dot.ok{background:var(--success-soft);border-color:var(--success);}
+  .tl-body b{font-size:13.5px;}
+  .tl-body p{margin:3px 0 0;color:var(--text-muted);font-size:12.5px;}
+  .tl-date{font-size:11.5px;color:var(--text-faint);margin-top:2px;}
+
+  .inline-form{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:10px;}
+  .inline-form label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--text-muted);font-weight:600;}
+  .inline-form input{border:1px solid var(--border-strong);border-radius:8px;padding:7px 9px;font-size:13px;background:var(--surface);color:var(--text);}
+
+  .letter-shell{display:grid;grid-template-columns:1fr 1.15fr;gap:20px;align-items:start;}
+  .template-list{display:flex;flex-direction:column;gap:8px;}
+  .tpl-btn{text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:11px 13px;cursor:pointer;}
+  .tpl-btn b{display:block;font-size:13.5px;margin-bottom:2px;}
+  .tpl-btn span{font-size:11.5px;color:var(--text-muted);}
+  .tpl-btn.active{border-color:var(--accent);background:var(--accent-soft);}
+
+  .letter-paper{background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:34px 38px;font-family:"Spectral",serif;box-shadow:var(--shadow);font-size:13.5px;line-height:1.65;}
+  .letter-paper .lh-brand{display:flex;justify-content:space-between;align-items:flex-start;font-family:"Sora",sans-serif;margin-bottom:22px;}
+  .letter-paper .lh-brand .n{font-family:"Spectral",serif;font-weight:700;font-size:16px;}
+  .letter-paper .lh-brand .addr{font-size:11px;color:var(--text-muted);text-align:right;line-height:1.5;}
+  .letter-paper .subj{font-weight:700;margin:16px 0 14px;}
+  .letter-paper table{margin:14px 0;font-family:"Sora",sans-serif;font-size:12.5px;}
+  .letter-paper table th{background:var(--warm);color:var(--on-warm);}
+  .letter-paper table th, .letter-paper table td{padding:6px 8px;}
+  .letter-paper .sign{margin-top:20px;}
+
+  .send-row{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap;}
+  select{border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;background:var(--surface);color:var(--text);font-size:13px;}
+
+  .int-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+  .int-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
+  .int-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .int-logo{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;}
+  .int-card p{color:var(--text-muted);font-size:12.5px;margin:10px 0 14px;}
+  .int-meta{font-size:11.5px;color:var(--text-faint);margin-bottom:12px;}
+
+  .portal-frame{max-width:420px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;}
+  .portal-bar{background:var(--sidebar-bg);color:#F6F4EE;padding:14px 18px;display:flex;align-items:center;gap:9px;}
+  .portal-bar .n{font-family:"Spectral",serif;font-weight:600;font-size:15px;}
+  .portal-body{padding:20px;}
+  .portal-body h2{font-size:16.5px;margin:0 0 3px;}
+  .portal-body .sub{color:var(--text-muted);font-size:12px;margin-bottom:16px;}
+  .p-amount{background:var(--surface-alt);border-radius:12px;padding:16px;text-align:center;margin-bottom:16px;}
+  .p-amount .big{font-family:"Spectral",serif;font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;}
+  .p-amount .lbl{font-size:11.5px;color:var(--text-muted);margin-top:2px;}
+  .p-line{display:flex;justify-content:space-between;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--border);}
+  .p-line:last-child{border-bottom:none;}
+  .p-actions{display:flex;flex-direction:column;gap:9px;margin-top:16px;}
+  .note-callout{display:flex;gap:9px;align-items:flex-start;background:var(--info-soft);color:var(--info);border-radius:9px;padding:11px 13px;font-size:12px;margin-bottom:18px;max-width:420px;margin-left:auto;margin-right:auto;}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;z-index:50;max-width:340px;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:900px){
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .grid-2{grid-template-columns:1fr;}
+    .letter-shell{grid-template-columns:1fr;}
+    .info-grid{grid-template-columns:1fr;}
+    .int-grid{grid-template-columns:1fr;}
+  }
+  @media (max-width:640px){
+    .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:20;transform:translateX(-100%);transition:transform .2s ease;}
+    .sidebar.open{transform:translateX(0);}
+    .kpi-row{grid-template-columns:1fr 1fr;}
+    .topbar{padding:12px 14px;}
+    .view{padding:16px 14px 50px;}
+  }
+</style>
+
+<!-- AUTH -->
+<div class="auth-shell" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" style="transform:rotate(135deg) scaleX(0.75)">
+        <path d="M21.5 2.5L2.5 10.6c-.6.26-.58 1.13.03 1.36l7.2 2.7 2.7 7.2c.23.6 1.1.63 1.36.03L21.5 2.5z" fill="#F5B700"/>
+        <path d="M21.5 2.5L11.5 15.7l-1.8-.68L21.5 2.5z" fill="#D9B310"/>
+      </svg>
+    </div>
+    <h1 id="authTitle">Sign in to DebtJet</h1>
+    <p class="sub" id="authSub">Staff access for your organization</p>
+    <form id="authForm">
+      <label>Email<input type="email" id="authEmail" required autocomplete="email" /></label>
+      <label>Password<input type="password" id="authPassword" required autocomplete="current-password" minlength="6" /></label>
+      <button class="btn primary" type="submit" id="authSubmitBtn" style="width:100%;justify-content:center;">Sign in</button>
+    </form>
+    <div class="auth-message" id="authMessage" hidden></div>
+    <button class="btn ghost" id="authToggleBtn" type="button" style="width:100%;justify-content:center;margin-top:10px;">Need an account? Sign up</button>
+  </div>
+</div>
+
+<!-- ONBOARDING (signed in, no org) -->
+<div class="auth-shell" id="onboardingScreen" hidden>
+  <div class="auth-card" style="max-width:420px;">
+    <h1>No organization yet</h1>
+    <p class="sub">Signed in as <span id="onboardingEmail"></span>. This account isn't attached to an organization yet — ask whoever set up DebtJet for your business to add you, or create a new one to start fresh.</p>
+    <form id="createOrgForm">
+      <label>Organization name<input type="text" id="orgNameInput" required placeholder="Your business name" /></label>
+      <button class="btn primary" type="submit" style="width:100%;justify-content:center;">Create organization</button>
+    </form>
+    <button class="btn ghost" id="onboardingSignOutBtn" type="button" style="width:100%;justify-content:center;margin-top:10px;">Sign out</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="mainApp" hidden>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="transform:rotate(135deg) scaleX(0.75)">
+        <path d="M21.5 2.5L2.5 10.6c-.6.26-.58 1.13.03 1.36l7.2 2.7 2.7 7.2c.23.6 1.1.63 1.36.03L21.5 2.5z" fill="#F5B700"/>
+        <path d="M21.5 2.5L11.5 15.7l-1.8-.68L21.5 2.5z" fill="#D9B310"/>
+      </svg>
+      <span class="brand-name">DebtJet</span>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Workspace</div>
+      <button class="nav-btn active" data-view="dashboard"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1.2"/><rect x="11" y="2.5" width="6.5" height="4" rx="1.2"/><rect x="11" y="8.5" width="6.5" height="9" rx="1.2"/><rect x="2.5" y="11" width="6.5" height="6.5" rx="1.2"/></svg>Dashboard</button>
+      <button class="nav-btn" data-view="cases"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4.5" width="15" height="12" rx="1.6"/><path d="M2.5 8h15"/></svg>Debtors &amp; Cases</button>
+      <button class="nav-btn" data-view="letters"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="15" height="13" rx="1.6"/><path d="M3.2 4.5l6.8 6 6.8-6"/></svg>Letters of Demand</button>
+      <button class="nav-btn" data-view="portal"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4.5" y="2.5" width="11" height="15" rx="2"/><path d="M8 15h4"/></svg>Debtor Portal</button>
+      <button class="nav-btn" data-view="integrations"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="3"/><circle cx="14" cy="14" r="3"/><path d="M8.2 7.8l3.6 4.4"/></svg>Integrations</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="who-row">
+        <div class="avatar" id="sidebarAvatar">–</div>
+        <div class="who"><b id="sidebarEmail">–</b><span id="sidebarOrg">–</span></div>
+      </div>
+      <button class="signout-btn" id="signOutBtn">Sign out</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="sub" id="pageSub">Overview of outstanding debt across all clients</div>
+      </div>
+      <div class="search"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M16 16l-3.5-3.5"/></svg><input placeholder="Search debtors, invoices, ABNs…" /></div>
+      <button class="btn primary" id="refreshBtn">↻ Refresh</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section class="view" data-view="dashboard">
+      <div class="kpi-row" id="kpiRow"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h3>Outstanding by age</h3></div>
+          <div class="card-body"><div class="aging-chart" id="agingChart"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Recent activity</h3></div>
+          <div class="card-body"><div class="activity" id="activityFeed"></div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head"><h3>Cases needing attention</h3><button class="btn ghost sm" data-goto="cases">View all cases →</button></div>
+        <div class="card-body" style="padding-top:0;">
+          <table><thead><tr><th>Debtor</th><th>Status</th><th class="num">Amount</th><th>Days overdue</th><th></th></tr></thead>
+          <tbody id="attentionBody"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- CASES LIST -->
+    <section class="view" data-view="cases" hidden>
+      <div class="toolbar" id="caseFilters"></div>
+      <div class="card">
+        <table><thead><tr><th>Debtor</th><th class="num">Amount owed</th><th>Days overdue</th><th>Status</th><th></th></tr></thead>
+        <tbody id="casesBody"></tbody></table>
+      </div>
+    </section>
+
+    <!-- CASE DETAIL -->
+    <section class="view" data-view="detail" hidden id="detailView"></section>
+
+    <!-- LETTERS -->
+    <section class="view" data-view="letters" hidden>
+      <div class="letter-shell">
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-head"><h3>Templates</h3></div>
+            <div class="card-body"><div class="template-list" id="templateList"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Applies to case</h3></div>
+            <div class="card-body">
+              <select id="letterCaseSelect" style="width:100%;"></select>
+              <div class="send-row">
+                <label style="font-size:12.5px;color:var(--text-muted);">Send via</label>
+                <select id="sendVia"><option value="outlook">Outlook</option><option value="google_workspace">Google Workspace</option></select>
+              </div>
+              <div class="send-row"><button class="btn primary" id="sendLetterBtn">Send now</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="letter-paper" id="letterPaper"></div>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <div class="card-head"><h3>Recently sent</h3></div>
+        <div class="card-body" style="padding-top:0;">
+          <table><thead><tr><th>Sent</th><th>Debtor</th><th>Letter</th><th>Sent via</th><th>Status</th></tr></thead>
+          <tbody id="sentLettersBody"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEBTOR PORTAL PREVIEW -->
+    <section class="view" data-view="portal" hidden>
+      <div class="note-callout">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" style="flex:0 0 auto;margin-top:1px;"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.2M10 6.8v.1"/></svg>
+        <div>Live preview: this calls the same token-based function a real debtor's browser would call — no login. Pick a case to generate (or reuse) its portal link.</div>
+      </div>
+      <div style="max-width:420px;margin:0 auto 18px;">
+        <select id="portalCaseSelect" style="width:100%;"></select>
+      </div>
+      <div id="portalFrameHolder"></div>
+    </section>
+
+    <!-- INTEGRATIONS -->
+    <section class="view" data-view="integrations" hidden>
+      <div class="int-grid" id="integrationsGrid"></div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var SUPABASE_URL = 'https://dqovkhrljrvgqwtljqdh.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxb3ZraHJsanJ2Z3F3dGxqcWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NzE5OTAsImV4cCI6MjEwNTM0Nzk5MH0.oxbjVK0VeXrg-gNpwMpIYR-Kcv64UDHcfXZpihRYrzE';
+  var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  var session = null, currentOrg = null, cases = [], letterTemplates = [], currentTpl = 'reminder';
+  var STATUS_LABEL = {new:'New',letter_sent:'Letter sent',awaiting_response:'Awaiting response',payment_plan:'Payment plan',escalated:'Escalated',resolved:'Resolved'};
+
+  function money(n){ n = Number(n)||0; return '$'+n.toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmt(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}); }
+  function pill(status){ return '<span class="pill '+status+'">'+(STATUS_LABEL[status]||status)+'</span>'; }
+
+  var toastEl = document.getElementById('toast'), toastTimer;
+  function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function(){toastEl.classList.remove('show');},3200); }
+
+  /* ---------- screen switching ---------- */
+  function showTopLevel(which){
+    document.getElementById('authScreen').hidden = which !== 'auth';
+    document.getElementById('onboardingScreen').hidden = which !== 'onboarding';
+    document.getElementById('mainApp').hidden = which !== 'app';
+  }
+
+  /* ---------- auth ---------- */
+  var authMode = 'signin';
+  function updateAuthModeUI(){
+    document.getElementById('authTitle').textContent = authMode === 'signin' ? 'Sign in to DebtJet' : 'Create your account';
+    document.getElementById('authSubmitBtn').textContent = authMode === 'signin' ? 'Sign in' : 'Sign up';
+    document.getElementById('authToggleBtn').textContent = authMode === 'signin' ? 'Need an account? Sign up' : 'Already have an account? Sign in';
+  }
+  document.getElementById('authToggleBtn').addEventListener('click', function(){
+    authMode = authMode === 'signin' ? 'signup' : 'signin';
+    updateAuthModeUI();
+  });
+  function setAuthMessage(msg, isError){
+    var el = document.getElementById('authMessage');
+    if(!msg){ el.hidden = true; return; }
+    el.hidden = false; el.textContent = msg; el.className = 'auth-message' + (isError ? ' error' : '');
+  }
+  document.getElementById('authForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var email = document.getElementById('authEmail').value.trim();
+    var password = document.getElementById('authPassword').value;
+    setAuthMessage(null);
+    var btn = document.getElementById('authSubmitBtn'); btn.disabled = true;
+    try{
+      if(authMode === 'signup'){
+        var r = await sb.auth.signUp({ email: email, password: password });
+        if(r.error){ setAuthMessage(r.error.message, true); return; }
+        if(!r.data.session){
+          setAuthMessage('Account created. If email confirmation is required, check your inbox, then sign in.', false);
+          authMode = 'signin'; updateAuthModeUI();
+          return;
+        }
+        session = r.data.session;
+      } else {
+        var r2 = await sb.auth.signInWithPassword({ email: email, password: password });
+        if(r2.error){ setAuthMessage(r2.error.message, true); return; }
+        session = r2.data.session;
+      }
+      await boot();
+    } finally { btn.disabled = false; }
+  });
+
+  document.getElementById('createOrgForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var name = document.getElementById('orgNameInput').value.trim();
+    if(!name) return;
+    var r = await sb.rpc('create_organization', { org_name: name, org_abn: null });
+    if(r.error){ toast('Could not create organization: ' + r.error.message); return; }
+    await boot();
+  });
+
+  var DEMO_EMAIL = 'demo@debtjet.app';
+  var DEMO_PASSWORD = 'DemoPass123!';
+  async function signInDemo(){
+    var r = await sb.auth.signInWithPassword({ email: DEMO_EMAIL, password: DEMO_PASSWORD });
+    if(r.error){ toast('Demo sign-in failed: ' + r.error.message); showTopLevel('auth'); return; }
+    session = r.data.session;
+    await boot();
+  }
+  async function signOut(){ await sb.auth.signOut(); session = null; currentOrg = null; toast('Signed out — reconnecting as demo user…'); await signInDemo(); }
+  document.getElementById('onboardingSignOutBtn').addEventListener('click', signOut);
+  document.getElementById('signOutBtn').addEventListener('click', signOut);
+
+  /* ---------- boot / org resolution ---------- */
+  async function boot(){
+    var r = await sb.from('org_members').select('org_id, role, organizations(name)').eq('user_id', session.user.id).limit(1).maybeSingle();
+    if(r.error || !r.data){
+      document.getElementById('onboardingEmail').textContent = session.user.email;
+      showTopLevel('onboarding');
+      return;
+    }
+    currentOrg = { id: r.data.org_id, role: r.data.role, name: r.data.organizations ? r.data.organizations.name : 'Your organization' };
+    document.getElementById('sidebarEmail').textContent = session.user.email;
+    document.getElementById('sidebarOrg').textContent = currentOrg.name + ' · ' + currentOrg.role + (session.user.email === DEMO_EMAIL ? ' · demo login' : '');
+    document.getElementById('sidebarAvatar').textContent = (session.user.email || '?').slice(0,2).toUpperCase();
+    showTopLevel('app');
+    await refreshAll();
+  }
+
+  async function refreshAll(){
+    await loadCases();
+    await loadLetterTemplates();
+    renderDashboard();
+    renderCasesTable('all');
+    renderLetterCaseOptions();
+    renderPortalCaseOptions();
+    await renderIntegrations();
+  }
+  document.getElementById('refreshBtn').addEventListener('click', function(){ refreshAll(); toast('Refreshed.'); });
+
+  /* ---------- data loading ---------- */
+  async function loadCases(){
+    var r = await sb.from('cases')
+      .select('id, status, interest_rate, opened_at, debtors(id,name,abn,contact_name,email,phone), invoices(id,invoice_number,description,amount,due_date,issued_date,status)')
+      .eq('org_id', currentOrg.id)
+      .order('opened_at', { ascending: true });
+    if(r.error){ toast('Could not load cases: ' + r.error.message); cases = []; return; }
+    var today = new Date();
+    cases = (r.data || []).map(function(c){
+      var open = (c.invoices||[]).filter(function(i){ return i.status !== 'paid' && i.status !== 'written_off'; });
+      var principal = open.reduce(function(s,i){ return s + Number(i.amount); }, 0);
+      var daysOverdue = open.reduce(function(mx,i){ return Math.max(mx, Math.round((today - new Date(i.due_date)) / 86400000)); }, 0);
+      var interest = Math.round(principal * Number(c.interest_rate) * Math.max(daysOverdue,0) / 365 * 100) / 100;
+      return {
+        id: c.id, status: c.status, interestRate: Number(c.interest_rate),
+        debtor: c.debtors || {}, invoices: open,
+        invoiceNumber: open[0] ? open[0].invoice_number : '—',
+        dueDate: open[0] ? open[0].due_date : null,
+        amount: principal, daysOverdue: daysOverdue, interest: interest, total: principal + interest
+      };
+    });
+  }
+
+  async function loadLetterTemplates(){
+    var r = await sb.from('letter_templates').select('*').eq('org_id', currentOrg.id);
+    letterTemplates = r.data || [];
+  }
+
+  /* ---------- dashboard ---------- */
+  function renderDashboard(){
+    var totalOutstanding = cases.reduce(function(s,c){ return s + c.amount; }, 0);
+    var totalInterest = cases.reduce(function(s,c){ return s + c.interest; }, 0);
+    document.getElementById('kpiRow').innerHTML =
+      '<div class="kpi"><div class="label">Total outstanding</div><div class="value">'+money(totalOutstanding)+'</div><div class="delta">Across '+cases.length+' open cases</div></div>'+
+      '<div class="kpi"><div class="label">Accrued interest</div><div class="value">'+money(totalInterest)+'</div><div class="delta">Live, computed from due dates</div></div>'+
+      '<div class="kpi"><div class="label">Letter templates</div><div class="value">'+letterTemplates.length+'</div><div class="delta">reminder / first / final</div></div>'+
+      '<div class="kpi"><div class="label">Cases escalated</div><div class="value">'+cases.filter(function(c){return c.status==='escalated';}).length+'</div><div class="delta">Tribunal filing currently paused</div></div>';
+
+    var buckets = [
+      {label:'0–30 days', cls:'b1', min:0, max:30},
+      {label:'31–60 days', cls:'b2', min:31, max:60},
+      {label:'61–90 days', cls:'b3', min:61, max:90},
+      {label:'90+ days', cls:'b4', min:91, max:999999}
+    ];
+    var sums = buckets.map(function(b){ return cases.filter(function(c){ return c.daysOverdue>=b.min && c.daysOverdue<=b.max; }).reduce(function(s,c){return s+c.amount;},0); });
+    var maxSum = Math.max.apply(null, sums.concat([1]));
+    document.getElementById('agingChart').innerHTML = buckets.map(function(b,i){
+      var h = Math.max(4, Math.round(sums[i]/maxSum*100));
+      return '<div class="aging-bar '+b.cls+'"><div class="amt">'+money(sums[i]).replace('.00','')+'</div><div class="bar" style="height:'+h+'%"></div><div class="lbl">'+b.label+'</div></div>';
+    }).join('');
+
+    var top = cases.slice().sort(function(a,b){return b.daysOverdue-a.daysOverdue;}).slice(0,4);
+    document.getElementById('attentionBody').innerHTML = top.length ? top.map(function(c){
+      return '<tr class="clickable" data-case="'+c.id+'"><td class="name-cell">'+c.debtor.name+'</td><td>'+pill(c.status)+'</td><td class="num">'+money(c.total)+'</td><td>'+c.daysOverdue+'</td><td><button class="btn sm ghost">Open →</button></td></tr>';
+    }).join('') : '<tr><td colspan="5" class="empty-note">No cases yet.</td></tr>';
+    Array.prototype.forEach.call(document.getElementById('attentionBody').querySelectorAll('[data-case]'), function(el){ el.addEventListener('click', function(){ openCase(this.getAttribute('data-case')); }); });
+
+    document.getElementById('activityFeed').innerHTML = cases.length ? '<div class="empty-note">Open a case to see its full timeline.</div>' : '<div class="empty-note">Nothing yet.</div>';
+  }
+
+  /* ---------- cases list ---------- */
+  document.getElementById('caseFilters').innerHTML = ['all','new','letter_sent','awaiting_response','payment_plan','escalated'].map(function(f,i){
+    return '<button class="chip'+(i===0?' active':'')+'" data-filter="'+f+'">'+(f==='all'?'All':STATUS_LABEL[f])+'</button>';
+  }).join('');
+  document.getElementById('caseFilters').addEventListener('click', function(e){
+    var btn = e.target.closest('.chip'); if(!btn) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#caseFilters .chip'), function(c){c.classList.remove('active');});
+    btn.classList.add('active');
+    renderCasesTable(btn.getAttribute('data-filter'));
+  });
+
+  function renderCasesTable(filter){
+    var rows = cases.filter(function(c){ return filter==='all' || c.status===filter; });
+    document.getElementById('casesBody').innerHTML = rows.length ? rows.map(function(c){
+      return '<tr class="clickable" data-case="'+c.id+'"><td class="name-cell">'+c.debtor.name+'<div class="sub">'+c.invoiceNumber+' · ABN '+(c.debtor.abn||'—')+'</div></td>'+
+        '<td class="num">'+money(c.total)+'</td><td>'+c.daysOverdue+' days</td><td>'+pill(c.status)+'</td><td><button class="btn sm ghost">Open →</button></td></tr>';
+    }).join('') : '<tr><td colspan="5" class="empty-note">No cases match this filter.</td></tr>';
+    Array.prototype.forEach.call(document.getElementById('casesBody').querySelectorAll('[data-case]'), function(el){ el.addEventListener('click', function(){ openCase(this.getAttribute('data-case')); }); });
+  }
+
+  /* ---------- case detail ---------- */
+  var EVENT_TONE = { escalated:'crit', no_response:'warn', letter_sent:'warn', payment_plan_accepted:'ok', invoice_issued:'ok', invoice_due:'ok', reminder_sent:'ok', portal_viewed:'ok', note_added:'ok', payment_logged:'ok' };
+
+  async function openCase(id){
+    var c = cases.filter(function(x){return x.id===id;})[0];
+    if(!c) return;
+    var ev = await sb.from('case_events').select('*').eq('case_id', id).order('occurred_at', { ascending: true });
+    var events = ev.data || [];
+    var html = ''
+      +'<button class="back-link" id="backToCases">← Back to Debtors &amp; Cases</button>'
+      +'<div class="detail-head"><div><h2>'+c.debtor.name+'</h2><div class="meta">ABN '+(c.debtor.abn||'—')+' · '+(c.debtor.contact_name||'')+' · '+(c.debtor.email||'')+' · '+(c.debtor.phone||'')+'</div></div>'
+        +'<div class="action-row"><button class="btn primary" data-goto="letters" data-preselect="'+c.id+'">Send letter of demand</button></div></div>'
+      +'<div class="info-grid">'
+        +'<div class="info-box"><div class="k">Total owing</div><div class="v">'+money(c.total)+'</div></div>'
+        +'<div class="info-box"><div class="k">Principal</div><div class="v">'+money(c.amount)+'</div></div>'
+        +'<div class="info-box"><div class="k">Interest accrued</div><div class="v">'+money(c.interest)+'<span style="font-weight:400;font-size:11.5px;color:var(--text-muted);"> · '+(c.interestRate*100).toFixed(0)+'% p.a., '+c.daysOverdue+' days</span></div></div>'
+        +'<div class="info-box"><div class="k">Status</div><div class="v small">'+pill(c.status)+'</div></div>'
+        +'<div class="info-box"><div class="k">Due date</div><div class="v small">'+fmt(c.dueDate)+' · '+c.daysOverdue+' days overdue</div></div>'
+        +'<div class="info-box"><div class="k">Invoices</div><div class="v small">'+c.invoices.map(function(i){return i.invoice_number;}).join(', ')+'</div></div>'
+      +'</div>'
+      +'<div class="card"><div class="card-head"><h3>Log a payment</h3></div><div class="card-body">'
+        +'<div class="inline-form"><label>Amount (AUD)<input type="number" step="0.01" min="0" id="paymentAmount"/></label><label>Date<input type="date" id="paymentDate" value="'+new Date().toISOString().slice(0,10)+'"/></label><button class="btn primary" id="logPaymentBtn">Log payment</button></div>'
+      +'</div></div>'
+      +'<div class="card" style="margin-top:16px;"><div class="card-head"><h3>Case timeline</h3></div><div class="card-body">'
+        +'<div class="timeline">'+(events.length ? events.map(function(t){
+          return '<div class="tl-item"><div class="tl-dot '+(EVENT_TONE[t.event_type]||'ok')+'"></div><div class="tl-body"><b>'+t.title+'</b><p>'+(t.body||'')+'</p><div class="tl-date">'+fmt(t.occurred_at)+'</div></div></div>';
+        }).join('') : '<div class="empty-note">No events yet.</div>')+'</div>'
+      +'</div></div>';
+    document.getElementById('detailView').innerHTML = html;
+    showView('detail');
+    document.getElementById('backToCases').addEventListener('click', function(){ showView('cases'); setActiveNav('cases'); });
+    var gotoBtn = document.getElementById('detailView').querySelector('[data-goto]');
+    if(gotoBtn) gotoBtn.addEventListener('click', function(){ selectLetterCase(c.id); showView('letters'); setActiveNav('letters'); });
+    document.getElementById('logPaymentBtn').addEventListener('click', async function(){
+      var amt = parseFloat(document.getElementById('paymentAmount').value);
+      var d = document.getElementById('paymentDate').value;
+      if(!amt || amt<=0){ toast('Enter an amount first.'); return; }
+      var invId = c.invoices[0] ? c.invoices[0].id : null;
+      var r = await sb.from('payments').insert({ org_id: currentOrg.id, case_id: c.id, invoice_id: invId, amount: amt, paid_at: d, method: 'manual', source: 'manual', created_by: session.user.id });
+      if(r.error){ toast('Could not log payment: ' + r.error.message); return; }
+      await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'payment_logged', title: 'Payment logged', body: money(amt) + ' recorded manually', created_by: session.user.id });
+      toast('Payment logged.');
+      await loadCases(); openCase(c.id); renderDashboard();
+    });
+  }
+
+  var TITLES = {
+    dashboard:['Dashboard','Overview of outstanding debt across all clients'],
+    cases:['Debtors & Cases','Every open and resolved recovery case'],
+    detail:['Case detail','Full history for this debtor'],
+    letters:['Letters of Demand','Draft, preview and send recovery correspondence'],
+    portal:['Debtor Portal','Live preview of the self-service page your debtors see'],
+    integrations:['Integrations','Connected accounting, email and calendar tools']
+  };
+  function showView(name){
+    Array.prototype.forEach.call(document.querySelectorAll('.view'), function(v){ v.hidden = v.getAttribute('data-view') !== name; });
+    document.getElementById('pageTitle').textContent = TITLES[name][0];
+    document.getElementById('pageSub').textContent = TITLES[name][1];
+    document.getElementById('sidebar').classList.remove('open');
+    window.scrollTo(0,0);
+  }
+  function setActiveNav(name){ Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function(b){ b.classList.toggle('active', b.getAttribute('data-view')===name); }); }
+  Array.prototype.forEach.call(document.querySelectorAll('.nav-btn[data-view]'), function(btn){ btn.addEventListener('click', function(){ var v=this.getAttribute('data-view'); showView(v); setActiveNav(v); }); });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-goto="cases"]'), function(btn){ btn.addEventListener('click', function(){ showView('cases'); setActiveNav('cases'); }); });
+
+  /* ---------- letters ---------- */
+  var TPL_LABEL = { reminder:'Friendly reminder', first_demand:'First letter of demand', final_demand:'Final letter of demand' };
+  function renderTemplateList(){
+    document.getElementById('templateList').innerHTML = ['reminder','first_demand','final_demand'].map(function(t){
+      var tpl = letterTemplates.filter(function(x){return x.type===t;})[0];
+      return '<button class="tpl-btn'+(t===currentTpl?' active':'')+'" data-tpl="'+t+'"><b>'+TPL_LABEL[t]+'</b><span>'+(tpl?tpl.name:'No template saved for this org yet')+'</span></button>';
+    }).join('');
+    Array.prototype.forEach.call(document.getElementById('templateList').querySelectorAll('.tpl-btn'), function(b){
+      b.addEventListener('click', function(){ currentTpl = this.getAttribute('data-tpl'); renderTemplateList(); renderLetterPreview(); });
+    });
+  }
+  function renderLetterCaseOptions(){
+    var sel = document.getElementById('letterCaseSelect');
+    sel.innerHTML = cases.map(function(c){ return '<option value="'+c.id+'">'+c.debtor.name+' — '+c.invoiceNumber+'</option>'; }).join('');
+    renderTemplateList();
+    renderLetterPreview();
+    refreshSentLetters();
+  }
+  function selectLetterCase(id){ document.getElementById('letterCaseSelect').value = id; renderLetterPreview(); }
+  document.getElementById('letterCaseSelect').addEventListener('change', renderLetterPreview);
+
+  function fillTemplate(str, c){
+    return (str||'').split('{{contact_name}}').join(c.debtor.contact_name || c.debtor.name)
+      .split('{{invoice_number}}').join(c.invoiceNumber)
+      .split('{{amount}}').join(money(c.amount))
+      .split('{{total_owing}}').join(money(c.total))
+      .split('{{due_date}}').join(fmt(c.dueDate))
+      .split('{{interest_rate}}').join((c.interestRate*100).toFixed(0)+'%');
+  }
+  function renderLetterPreview(){
+    var id = document.getElementById('letterCaseSelect').value;
+    var c = cases.filter(function(x){return x.id===id;})[0];
+    var tpl = letterTemplates.filter(function(x){return x.type===currentTpl;})[0];
+    if(!c || !tpl){ document.getElementById('letterPaper').innerHTML = '<div class="empty-note">No case or template available yet.</div>'; return; }
+    var subject = fillTemplate(tpl.subject_template, c);
+    var body = fillTemplate(tpl.body_template, c);
+    document.getElementById('letterPaper').innerHTML =
+      '<div class="lh-brand"><div><div class="n">DebtJet</div><div style="color:var(--text-muted);font-size:11px;">on behalf of '+currentOrg.name+'</div></div>'
+      +'<div class="addr">'+fmt(new Date())+'<br>'+c.debtor.name+'<br>Attn: '+(c.debtor.contact_name||'')+'</div></div>'
+      +'<div class="subj">'+subject+'</div><p>'+body+'</p>'
+      +'<table><tr><th style="text-align:left;">Invoice principal</th><td style="text-align:right;">'+money(c.amount)+'</td></tr>'
+      +'<tr><th style="text-align:left;">Interest ('+c.daysOverdue+' days @ '+(c.interestRate*100).toFixed(0)+'% p.a.)</th><td style="text-align:right;">'+money(c.interest)+'</td></tr>'
+      +'<tr><th style="text-align:left;">Total now due</th><td style="text-align:right;">'+money(c.total)+'</td></tr></table>'
+      +'<div class="sign">Regards,<br><b>Accounts team</b><br>'+currentOrg.name+'<br>via DebtJet</div>';
+  }
+  document.getElementById('sendLetterBtn').addEventListener('click', async function(){
+    var id = document.getElementById('letterCaseSelect').value;
+    var c = cases.filter(function(x){return x.id===id;})[0];
+    var tpl = letterTemplates.filter(function(x){return x.type===currentTpl;})[0];
+    var sendVia = document.getElementById('sendVia').value;
+    if(!c || !tpl){ toast('Nothing to send yet.'); return; }
+    var subject = fillTemplate(tpl.subject_template, c), body = fillTemplate(tpl.body_template, c);
+    var r = await sb.from('letters').insert({ org_id: currentOrg.id, case_id: c.id, template_id: tpl.id, type: currentTpl, subject: subject, body: body, amount_at_send: c.amount, interest_at_send: c.interest, send_via: sendVia, status: 'sent', sent_at: new Date().toISOString(), created_by: session.user.id });
+    if(r.error){ toast('Could not send: ' + r.error.message); return; }
+    await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'letter_sent', title: tpl.name + ' sent', body: 'Sent via ' + sendVia, created_by: session.user.id });
+    toast('Sent "'+tpl.name+'" to '+c.debtor.name+'.');
+    refreshSentLetters();
+  });
+  async function refreshSentLetters(){
+    var r = await sb.from('letters').select('sent_at, type, send_via, status, cases(debtors(name))').eq('org_id', currentOrg.id).order('sent_at', { ascending: false }).limit(10);
+    var rows = r.data || [];
+    document.getElementById('sentLettersBody').innerHTML = rows.length ? rows.map(function(l){
+      return '<tr><td>'+fmt(l.sent_at)+'</td><td>'+(l.cases && l.cases.debtors ? l.cases.debtors.name : '—')+'</td><td>'+(TPL_LABEL[l.type]||l.type)+'</td><td>'+(l.send_via||'—')+'</td><td><span class="pill letter_sent">'+l.status+'</span></td></tr>';
+    }).join('') : '<tr><td colspan="5" class="empty-note">No letters sent yet.</td></tr>';
+  }
+
+  /* ---------- debtor portal preview ---------- */
+  function renderPortalCaseOptions(){
+    var sel = document.getElementById('portalCaseSelect');
+    sel.innerHTML = cases.map(function(c){ return '<option value="'+c.id+'">'+c.debtor.name+' — '+c.invoiceNumber+'</option>'; }).join('');
+    sel.onchange = function(){ loadPortalSnapshot(sel.value); };
+    if(cases.length) loadPortalSnapshot(cases[0].id);
+  }
+  async function ensurePortalToken(caseId){
+    var existing = await sb.from('debtor_portal_tokens').select('token').eq('case_id', caseId).is('revoked_at', null).gt('expires_at', new Date().toISOString()).limit(1).maybeSingle();
+    if(existing.data) return existing.data.token;
+    var ins = await sb.from('debtor_portal_tokens').insert({ org_id: currentOrg.id, case_id: caseId }).select('token').single();
+    if(ins.error){ toast('Could not create portal link: ' + ins.error.message); return null; }
+    return ins.data.token;
+  }
+  async function loadPortalSnapshot(caseId){
+    document.getElementById('portalFrameHolder').innerHTML = '<div class="empty-note" style="text-align:center;">Loading…</div>';
+    var token = await ensurePortalToken(caseId);
+    if(!token) return;
+    var r = await sb.rpc('get_debtor_portal_snapshot', { p_token: token });
+    if(r.error || !r.data || r.data.error){
+      document.getElementById('portalFrameHolder').innerHTML = '<div class="empty-note" style="text-align:center;">Could not load snapshot.</div>';
+      return;
+    }
+    var s = r.data;
+    document.getElementById('portalFrameHolder').innerHTML =
+      '<div class="portal-frame"><div class="portal-bar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21.5 2.5L2.5 10.6c-.6.26-.58 1.13.03 1.36l7.2 2.7 2.7 7.2c.23.6 1.1.63 1.36.03L21.5 2.5z" fill="#F5B700" style="transform-origin:center;transform:rotate(135deg) scaleX(0.75)"/></svg><span class="n">DebtJet</span></div>'
+      +'<div class="portal-body"><h2>'+s.debtor_name+'</h2><div class="sub">'+(s.invoices&&s.invoices[0]?s.invoices[0].invoice_number:'')+' · '+s.org_name+'</div>'
+      +'<div class="p-amount"><div class="big">'+money(s.total_owing)+'</div><div class="lbl">Total owing, including interest to today</div></div>'
+      +'<div class="p-line"><span>Principal</span><span>'+money(s.principal)+'</span></div>'
+      +'<div class="p-line"><span>Interest accrued ('+s.days_overdue+' days)</span><span>'+money(s.interest_accrued)+'</span></div>'
+      +'<div class="p-line"><span>Case status</span><span>'+(STATUS_LABEL[s.case_status]||s.case_status)+'</span></div>'
+      +'<div class="p-actions">'
+        +'<button class="btn primary" id="portalPayBtn">Pay in full — '+money(s.total_owing)+'</button>'
+        +'<button class="btn" id="portalPlanBtn">Propose a payment plan</button>'
+      +'</div></div></div>';
+    document.getElementById('portalPayBtn').addEventListener('click', function(){ toast('Payment processing is a preview here — the click was logged as a real case event.'); sb.rpc('log_debtor_portal_action', { p_token: token, p_action: 'portal_pay_clicked', p_note: 'Debtor clicked Pay in full in preview' }); });
+    document.getElementById('portalPlanBtn').addEventListener('click', function(){ toast('Payment-plan form is a preview here — the click was logged as a real case event.'); sb.rpc('log_debtor_portal_action', { p_token: token, p_action: 'portal_plan_clicked', p_note: 'Debtor clicked Propose a payment plan in preview' }); });
+  }
+
+  /* ---------- integrations ---------- */
+  var PROVIDER_META = {
+    xero: { label:'Xero', color:'#13B5EA', letter:'X', desc:'Syncs invoices, contacts and payment status. New overdue invoices create a case automatically.' },
+    quickbooks: { label:'QuickBooks', color:'#2CA01C', letter:'Q', desc:'Syncs invoices and customer records for businesses using QuickBooks Online instead of Xero.' },
+    outlook: { label:'Outlook', color:'#2E8FC4', letter:'O', desc:'Sends letters of demand and reminders, and logs replies against the matching case automatically.' },
+    google_workspace: { label:'Google Workspace', color:'#D9B310', letter:'G', desc:'Alternative send channel for letters and reminders, plus calendar holds for follow-up call reminders.' }
+  };
+  async function renderIntegrations(){
+    var r = await sb.from('integration_connections').select('*').eq('org_id', currentOrg.id);
+    var rows = r.data || [];
+    var providers = ['xero','quickbooks','outlook','google_workspace'];
+    document.getElementById('integrationsGrid').innerHTML = providers.map(function(p){
+      var meta = PROVIDER_META[p];
+      var row = rows.filter(function(x){return x.provider===p;})[0];
+      var connected = row && row.status === 'connected';
+      return '<div class="int-card"><div class="int-top"><div class="int-logo" style="background:'+meta.color+';">'+meta.letter+'</div>'
+        +'<span class="pill '+(connected?'connected':'not_connected')+'">'+(connected?'Connected':'Not connected')+'</span></div>'
+        +'<b>'+meta.label+'</b><p>'+meta.desc+'</p>'
+        +'<div class="int-meta">'+(connected ? ('Connected — status only, OAuth flow not built yet') : 'Not yet connected')+'</div>'
+        +'<button class="btn sm '+(connected?'':'primary')+'" data-provider="'+p+'" data-connected="'+connected+'">'+(connected?'Disconnect':'Connect (demo status)')+'</button></div>';
+    }).join('');
+    Array.prototype.forEach.call(document.getElementById('integrationsGrid').querySelectorAll('[data-provider]'), function(btn){
+      btn.addEventListener('click', async function(){
+        var p = this.getAttribute('data-provider');
+        var wasConnected = this.getAttribute('data-connected') === 'true';
+        var r2 = await sb.from('integration_connections').upsert({ org_id: currentOrg.id, provider: p, status: wasConnected ? 'not_connected' : 'connected', display_name: wasConnected ? null : (PROVIDER_META[p].label + ' (demo connection)'), connected_by: session.user.id }, { onConflict: 'org_id,provider' });
+        if(r2.error){ toast(r2.error.message); return; }
+        toast(wasConnected ? (PROVIDER_META[p].label + ' disconnected.') : (PROVIDER_META[p].label + ' marked as connected (no real OAuth yet).'));
+        renderIntegrations();
+      });
+    });
+  }
+
+  /* ---------- init ---------- */
+  (async function(){
+    updateAuthModeUI();
+    var s = await sb.auth.getSession();
+    session = s.data.session;
+    if(session){ await boot(); } else { await signInDemo(); }
+  })();
+})();
+</script>
