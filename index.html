@@ -498,6 +498,8 @@
 
   var DEMO_EMAIL = 'demo@debtjet.app';
   var DEMO_PASSWORD = 'DemoPass123!';
+  var XERO_CLIENT_ID = 'FFFBC6E6286748A49D04DF87CEF85B5F';
+  var XERO_REDIRECT_URI = 'https://dqovkhrljrvgqwtljqdh.supabase.co/functions/v1/xero-oauth-callback';
   async function signInDemo(){
     var r = await sb.auth.signInWithPassword({ email: DEMO_EMAIL, password: DEMO_PASSWORD });
     if(r.error){ toast('Demo sign-in failed: ' + r.error.message); showTopLevel('auth'); return; }
@@ -803,13 +805,24 @@
       return '<div class="int-card"><div class="int-top"><div class="int-logo" style="background:'+meta.color+';">'+meta.letter+'</div>'
         +'<span class="pill '+(connected?'connected':'not_connected')+'">'+(connected?'Connected':'Not connected')+'</span></div>'
         +'<b>'+meta.label+'</b><p>'+meta.desc+'</p>'
-        +'<div class="int-meta">'+(connected ? ('Connected — status only, OAuth flow not built yet') : 'Not yet connected')+'</div>'
-        +'<button class="btn sm '+(connected?'':'primary')+'" data-provider="'+p+'" data-connected="'+connected+'">'+(connected?'Disconnect':'Connect (demo status)')+'</button></div>';
+        +'<div class="int-meta">'+(connected ? (p==='xero' ? 'Connected — sync of live invoices not built yet' : 'Connected — status only, OAuth flow not built yet') : 'Not yet connected')+'</div>'
+        +'<button class="btn sm '+(connected?'':'primary')+'" data-provider="'+p+'" data-connected="'+connected+'">'+(connected?'Disconnect':(p==='xero'?'Connect with Xero':'Connect (demo status)'))+'</button></div>';
     }).join('');
     Array.prototype.forEach.call(document.getElementById('integrationsGrid').querySelectorAll('[data-provider]'), function(btn){
       btn.addEventListener('click', async function(){
         var p = this.getAttribute('data-provider');
         var wasConnected = this.getAttribute('data-connected') === 'true';
+        if(p === 'xero' && !wasConnected){
+          var state = btoa(currentOrg.id);
+          var authUrl = 'https://login.xero.com/identity/connect/authorize'
+            + '?response_type=code'
+            + '&client_id=' + encodeURIComponent(XERO_CLIENT_ID)
+            + '&redirect_uri=' + encodeURIComponent(XERO_REDIRECT_URI)
+            + '&scope=' + encodeURIComponent('offline_access accounting.transactions.read accounting.contacts.read')
+            + '&state=' + encodeURIComponent(state);
+          window.location.href = authUrl;
+          return;
+        }
         var r2 = await sb.from('integration_connections').upsert({ org_id: currentOrg.id, provider: p, status: wasConnected ? 'not_connected' : 'connected', display_name: wasConnected ? null : (PROVIDER_META[p].label + ' (demo connection)'), connected_by: session.user.id }, { onConflict: 'org_id,provider' });
         if(r2.error){ toast(r2.error.message); return; }
         toast(wasConnected ? (PROVIDER_META[p].label + ' disconnected.') : (PROVIDER_META[p].label + ' marked as connected (no real OAuth yet).'));
@@ -824,6 +837,10 @@
     var s = await sb.auth.getSession();
     session = s.data.session;
     if(session){ await boot(); } else { await signInDemo(); }
+    if(new URLSearchParams(window.location.search).get('xero') === 'connected'){
+      history.replaceState(null, '', window.location.pathname);
+      if(currentOrg){ showView('integrations'); setActiveNav('integrations'); toast('Xero connected!'); }
+    }
   })();
 })();
 </script>
