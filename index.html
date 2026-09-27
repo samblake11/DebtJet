@@ -818,7 +818,7 @@
             + '?response_type=code'
             + '&client_id=' + encodeURIComponent(XERO_CLIENT_ID)
             + '&redirect_uri=' + encodeURIComponent(XERO_REDIRECT_URI)
-            + '&scope=' + encodeURIComponent('offline_access accounting.invoices.read accounting.payments.read accounting.contacts.read')
+            + '&scope=' + encodeURIComponent('offline_access accounting.invoices accounting.payments accounting.contacts')
             + '&state=' + encodeURIComponent(state);
           window.location.href = authUrl;
           return;
