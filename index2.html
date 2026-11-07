@@ -1,0 +1,1280 @@
+<title>DebtJet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --bg:#F3F7FD;
+    --surface:#FFFFFF;
+    --surface-alt:#EAF2FC;
+    --border:#DCE6F5;
+    --border-strong:#C3D4EC;
+    --text:#0B2A5B;
+    --text-muted:#3F5170;
+    --text-faint:#7284A3;
+    --accent:#1E6FD9;
+    --accent-strong:#1554B8;
+    --accent-soft:#DCEAFB;
+    --warm:#FFC72C;
+    --warm-soft:#FFF3D1;
+    --on-warm:#0B2A5B;
+    --sidebar-bg:#0B2A5B;
+    --sidebar-text:#C9D6EC;
+    --sidebar-text-dim:#8FA3C7;
+    --sidebar-active:#123B73;
+    --success:#2F8F5B;
+    --success-soft:#DFF2E6;
+    --warning:#B4790A;
+    --warning-soft:#FBEBD2;
+    --critical:#C1473C;
+    --critical-soft:#F8E1DE;
+    --info:#1554B8;
+    --info-soft:#DCEAFB;
+    --shadow:0 1px 2px rgba(11,42,91,.06), 0 4px 14px rgba(11,42,91,.07);
+    --radius:12px;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1C33; --surface:#122142; --surface-alt:#182B52; --border:#2A3E66; --border-strong:#3C5484;
+      --text:#E7EDF9; --text-muted:#AFC0DE; --text-faint:#7E93BC;
+      --accent:#5B9BF5; --accent-strong:#8AB8FF; --accent-soft:#1B2F57;
+      --warm:#FFD35C; --warm-soft:#4A3A12; --on-warm:#0B2A5B;
+      --sidebar-bg:#081527; --sidebar-text:#B9C8E8; --sidebar-text-dim:#5E76A8; --sidebar-active:#16294E;
+      --success:#5BC48C; --success-soft:#1C3327; --warning:#E3A736; --warning-soft:#3A2C10;
+      --critical:#E38178; --critical-soft:#3A211E; --info:#8AB8FF; --info-soft:#1B2F57;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.35);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1C33; --surface:#122142; --surface-alt:#182B52; --border:#2A3E66; --border-strong:#3C5484;
+    --text:#E7EDF9; --text-muted:#AFC0DE; --text-faint:#7E93BC;
+    --accent:#5B9BF5; --accent-strong:#8AB8FF; --accent-soft:#1B2F57;
+    --warm:#FFD35C; --warm-soft:#4A3A12; --on-warm:#0B2A5B;
+    --sidebar-bg:#081527; --sidebar-text:#B9C8E8; --sidebar-text-dim:#5E76A8; --sidebar-active:#16294E;
+    --success:#5BC48C; --success-soft:#1C3327; --warning:#E3A736; --warning-soft:#3A2C10;
+    --critical:#E38178; --critical-soft:#3A211E; --info:#8AB8FF; --info-soft:#1B2F57;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+
+  *{box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:"Sora",-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.5;}
+  h1,h2,h3,.display{font-family:"Sora",-apple-system,sans-serif;font-weight:800;text-wrap:balance;letter-spacing:-0.02em;}
+  button{font-family:inherit;}
+  ::selection{background:var(--accent-soft);}
+  input,select{font-family:inherit;}
+
+  .app{display:flex;min-height:100dvh;}
+  .app[hidden]{display:none;}
+
+  /* AUTH / ONBOARDING */
+  .auth-shell{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg);}
+  .auth-shell[hidden]{display:none;}
+  .auth-card{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:30px 28px;}
+  .auth-card h1{font-size:22px;margin:14px 0 4px;text-align:center;}
+  .auth-card .sub{color:var(--text-muted);font-size:13px;text-align:center;margin:0 0 20px;}
+  .auth-card form{display:flex;flex-direction:column;gap:12px;}
+  .auth-card label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:600;color:var(--text-muted);}
+  .auth-card input{border:1px solid var(--border-strong);border-radius:8px;padding:9px 11px;font-size:13.5px;background:var(--surface);color:var(--text);}
+  .auth-message{margin-top:12px;font-size:12.5px;padding:9px 11px;border-radius:8px;background:var(--info-soft);color:var(--info);}
+  .auth-message.error{background:var(--critical-soft);color:var(--critical);}
+  .auth-logo{display:flex;justify-content:center;}
+
+  /* SIDEBAR */
+  .sidebar{width:236px;flex:0 0 236px;background:var(--sidebar-bg);color:var(--sidebar-text);display:flex;flex-direction:column;padding:20px 14px;gap:22px;position:sticky;top:0;height:100dvh;}
+  .brand{display:flex;align-items:center;gap:10px;padding:0 8px;}
+  .brand-name{font-family:"Sora",sans-serif;font-weight:800;font-size:19px;color:#EAF2FC;letter-spacing:-0.02em;}
+  .brand-name .jet{color:var(--warm);}
+  .nav{display:flex;flex-direction:column;gap:2px;}
+  .nav-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--sidebar-text-dim);padding:14px 12px 6px;}
+  .nav-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;color:var(--sidebar-text);padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13.5px;transition:background .12s ease;}
+  .nav-btn:hover{background:var(--sidebar-active);}
+  .nav-btn.active{background:var(--sidebar-active);color:#fff;font-weight:600;}
+  .nav-btn .ic{width:17px;height:17px;flex:0 0 auto;opacity:.9;}
+  .sidebar-foot{margin-top:auto;padding:12px 8px 4px;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:8px;}
+  .who-row{display:flex;align-items:center;gap:10px;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--warm);color:var(--on-warm);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;flex:0 0 auto;}
+  .who{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
+  .who b{color:#EAF2FC;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .who span{color:var(--sidebar-text-dim);font-size:11px;}
+  .signout-btn{background:transparent;border:1px solid rgba(255,255,255,.16);color:var(--sidebar-text);border-radius:7px;padding:6px 10px;font-size:12px;cursor:pointer;}
+  .signout-btn:hover{background:var(--sidebar-active);}
+
+  /* MAIN */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .topbar{display:flex;align-items:center;gap:16px;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:5;}
+  .topbar h1{font-size:20px;margin:0;flex:0 0 auto;}
+  .topbar .sub{color:var(--text-muted);font-size:12.5px;margin-top:2px;}
+  .search{flex:1;max-width:360px;display:flex;align-items:center;gap:8px;background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text-muted);margin-left:auto;}
+  .search input{border:none;background:transparent;outline:none;color:var(--text);font-size:13px;width:100%;}
+  .btn{display:inline-flex;align-items:center;gap:7px;border-radius:8px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer;white-space:nowrap;transition:transform .08s ease, background .12s ease;}
+  .btn:hover{background:var(--surface-alt);}
+  .btn:active{transform:scale(.98);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn.primary:hover{background:var(--accent-strong);border-color:var(--accent-strong);}
+  .btn.ghost{border-color:transparent;background:transparent;}
+  .btn.ghost:hover{background:var(--surface-alt);}
+  .btn.sm{padding:6px 11px;font-size:12.5px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn:disabled:hover{background:var(--surface);}
+
+  .view{padding:24px 28px 60px;max-width:1180px;}
+  .view[hidden]{display:none;}
+
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);}
+  .kpi .label{font-size:12px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+  .kpi .value{font-family:"Sora",sans-serif;font-size:26px;font-weight:700;letter-spacing:-0.01em;margin-top:6px;font-variant-numeric:tabular-nums;}
+  .kpi .delta{font-size:12px;margin-top:6px;color:var(--text-faint);}
+
+  .grid-2{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;align-items:start;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+  .card-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;}
+  .card-head h3{font-size:15.5px;margin:0;}
+  .card-body{padding:6px 18px 18px;}
+
+  .aging-chart{display:flex;align-items:flex-end;gap:18px;height:150px;padding:10px 6px 0;}
+  .aging-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;}
+  .aging-bar .bar{width:100%;max-width:52px;border-radius:6px 6px 3px 3px;background:var(--accent);}
+  .aging-bar.b1 .bar{background:var(--accent);}
+  .aging-bar.b2 .bar{background:var(--warm);}
+  .aging-bar.b3 .bar{background:var(--warning);}
+  .aging-bar.b4 .bar{background:var(--critical);}
+  .aging-bar .amt{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .aging-bar .lbl{font-size:11.5px;color:var(--text-muted);}
+
+  .activity{display:flex;flex-direction:column;gap:14px;}
+  .activity-item{display:flex;gap:10px;font-size:12.5px;}
+  .activity-item .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);margin-top:5px;flex:0 0 auto;}
+  .activity-item .t{color:var(--text-faint);font-size:11.5px;}
+  .empty-note{color:var(--text-faint);font-size:12.5px;padding:8px 0;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{text-align:left;color:var(--on-warm);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:9px 10px;background:var(--warm);border-bottom:1px solid var(--border-strong);}
+  thead th:first-child{border-top-left-radius:6px;border-bottom-left-radius:6px;}
+  thead th:last-child{border-top-right-radius:6px;border-bottom-right-radius:6px;}
+  tbody td{padding:11px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.clickable{cursor:pointer;transition:background .1s ease;}
+  tbody tr.clickable:hover{background:var(--surface-alt);}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .name-cell{font-weight:700;background:var(--warm-soft);border-radius:6px;}
+  .name-cell .sub{font-weight:400;color:var(--text-faint);font-size:11.5px;}
+
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap;}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .pill.new{background:var(--info-soft);color:var(--info);}
+  .pill.letter_sent{background:var(--accent-soft);color:var(--accent-strong);}
+  .pill.awaiting_response{background:var(--warning-soft);color:var(--warning);}
+  .pill.payment_plan{background:var(--success-soft);color:var(--success);}
+  .pill.escalated{background:var(--critical-soft);color:var(--critical);}
+  .pill.debt_recovery{background:var(--warning-soft);color:var(--warning);}
+  .pill.tribunal{background:var(--critical-soft);color:var(--critical);}
+  .pill.resolved{background:var(--success-soft);color:var(--success);}
+  .pill.connected{background:var(--success-soft);color:var(--success);}
+  .pill.not_connected{background:var(--surface-alt);color:var(--text-muted);}
+
+  .pipeline{display:flex;margin-bottom:4px;}
+  .pipeline-step{flex:1;text-align:center;padding:9px 6px 11px;border-bottom:3px solid var(--border);font-size:11.5px;font-weight:600;color:var(--text-faint);}
+  .pipeline-step.done{color:var(--text-muted);border-color:var(--accent-soft);}
+  .pipeline-step.current{color:var(--accent-strong);border-color:var(--accent);}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .chip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:12.5px;cursor:pointer;color:var(--text-muted);}
+  .chip.active{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:600;}
+
+  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--accent);background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;padding:0;margin-bottom:14px;}
+
+  .detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+  .detail-head h2{font-size:24px;margin:0 0 4px;}
+  .detail-head .meta{color:var(--text-muted);font-size:13px;}
+  .action-row{display:flex;gap:8px;flex-wrap:wrap;}
+
+  .info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;}
+  .info-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);}
+  .info-box .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:600;}
+  .info-box .v{font-size:16px;margin-top:5px;font-weight:600;font-variant-numeric:tabular-nums;}
+  .info-box .v.small{font-size:13.5px;font-weight:500;}
+
+  .timeline{display:flex;flex-direction:column;}
+  .tl-item{display:flex;gap:14px;position:relative;padding-bottom:22px;}
+  .tl-item:last-child{padding-bottom:0;}
+  .tl-item::before{content:"";position:absolute;left:6.5px;top:18px;bottom:0;width:1.5px;background:var(--border);}
+  .tl-item:last-child::before{display:none;}
+  .tl-dot{width:14px;height:14px;border-radius:50%;background:var(--accent-soft);border:2px solid var(--accent);flex:0 0 auto;margin-top:2px;}
+  .tl-dot.warn{background:var(--warning-soft);border-color:var(--warning);}
+  .tl-dot.crit{background:var(--critical-soft);border-color:var(--critical);}
+  .tl-dot.ok{background:var(--success-soft);border-color:var(--success);}
+  .tl-body b{font-size:13.5px;}
+  .tl-body p{margin:3px 0 0;color:var(--text-muted);font-size:12.5px;}
+  .tl-date{font-size:11.5px;color:var(--text-faint);margin-top:2px;}
+
+  .inline-form{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:10px;}
+  .inline-form label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--text-muted);font-weight:600;}
+  .inline-form input{border:1px solid var(--border-strong);border-radius:8px;padding:7px 9px;font-size:13px;background:var(--surface);color:var(--text);}
+
+  .letter-shell{display:grid;grid-template-columns:1fr 1.15fr;gap:20px;align-items:start;}
+  .template-list{display:flex;flex-direction:column;gap:8px;}
+  .tpl-btn{text-align:left;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:11px 13px;cursor:pointer;}
+  .tpl-btn b{display:block;font-size:13.5px;margin-bottom:2px;}
+  .tpl-btn span{font-size:11.5px;color:var(--text-muted);}
+  .tpl-btn.active{border-color:var(--accent);background:var(--accent-soft);}
+
+  .letter-paper{background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:34px 38px;font-family:"Sora",sans-serif;box-shadow:var(--shadow);font-size:13.5px;line-height:1.65;}
+  .letter-paper .lh-brand{display:flex;justify-content:space-between;align-items:flex-start;font-family:"Sora",sans-serif;margin-bottom:22px;}
+  .letter-paper .lh-brand .n{font-family:"Sora",sans-serif;font-weight:800;letter-spacing:-0.01em;font-size:16px;}
+  .letter-paper .lh-brand .addr{font-size:11px;color:var(--text-muted);text-align:right;line-height:1.5;}
+  .letter-paper .subj{font-weight:700;margin:16px 0 14px;}
+  .letter-paper table{margin:14px 0;font-family:"Sora",sans-serif;font-size:12.5px;}
+  .letter-paper table th{background:var(--warm);color:var(--on-warm);}
+  .letter-paper table th, .letter-paper table td{padding:6px 8px;}
+  .letter-paper .sign{margin-top:20px;}
+
+  .send-row{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap;}
+  select{border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;background:var(--surface);color:var(--text);font-size:13px;}
+
+  .int-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+  .int-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
+  .int-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+  .int-logo{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;}
+  .int-card p{color:var(--text-muted);font-size:12.5px;margin:10px 0 14px;}
+  .int-meta{font-size:11.5px;color:var(--text-faint);margin-bottom:12px;}
+
+  .portal-frame{max-width:420px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;}
+  .portal-bar{background:var(--sidebar-bg);color:#EAF2FC;padding:14px 18px;display:flex;align-items:center;gap:9px;}
+  .portal-bar .n{font-family:"Sora",sans-serif;font-weight:800;letter-spacing:-0.01em;font-size:15px;}
+  .portal-body{padding:20px;}
+  .portal-body h2{font-size:16.5px;margin:0 0 3px;}
+  .portal-body .sub{color:var(--text-muted);font-size:12px;margin-bottom:16px;}
+  .p-amount{background:var(--surface-alt);border-radius:12px;padding:16px;text-align:center;margin-bottom:16px;}
+  .p-amount .big{font-family:"Sora",sans-serif;font-size:30px;font-weight:700;letter-spacing:-0.01em;font-variant-numeric:tabular-nums;}
+  .p-amount .lbl{font-size:11.5px;color:var(--text-muted);margin-top:2px;}
+  .p-line{display:flex;justify-content:space-between;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--border);}
+  .p-line:last-child{border-bottom:none;}
+  .p-actions{display:flex;flex-direction:column;gap:9px;margin-top:16px;}
+  .note-callout{display:flex;gap:9px;align-items:flex-start;background:var(--info-soft);color:var(--info);border-radius:9px;padding:11px 13px;font-size:12px;margin-bottom:18px;max-width:420px;margin-left:auto;margin-right:auto;}
+
+  /* STATEMENTS */
+  .stmt-shell{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start;}
+  .stmt-import-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+  .stmt-import-row .hint{font-size:11.5px;color:var(--text-faint);}
+  .contact-list{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto;}
+  .contact-group{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .contact-group.sel{border-color:var(--accent);}
+  .contact-head{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;background:var(--surface);}
+  .contact-group.sel .contact-head{background:var(--accent-soft);}
+  .contact-head input[type="checkbox"]{width:16px;height:16px;flex:0 0 auto;accent-color:var(--accent);}
+  .contact-name{flex:1;font-weight:700;font-size:13px;min-width:0;}
+  .contact-name .sub{display:block;font-weight:400;color:var(--text-faint);font-size:11px;margin-top:1px;}
+  .contact-total{font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap;}
+  .chev{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:2px 2px 2px 6px;}
+  .contact-invoices{border-top:1px solid var(--border);background:var(--surface-alt);}
+  .debt-row{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 30px;font-size:12.5px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .debt-row:last-child{border-bottom:none;}
+  .debt-row input[type="checkbox"]{width:14px;height:14px;flex:0 0 auto;accent-color:var(--accent);}
+  .debt-main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .debt-main b{font-size:12.5px;}
+  .debt-desc{color:var(--text-faint);font-size:11px;}
+  .debt-due{color:var(--text-muted);white-space:nowrap;width:84px;}
+  .debt-amt{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;width:86px;text-align:right;}
+  .stmt-selection-summary{font-size:12px;color:var(--text-muted);margin:10px 0 2px;}
+  .stmt-recipient-row{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
+  .stmt-recipient-row label{font-size:11.5px;font-weight:600;color:var(--text-muted);}
+  .stmt-recipient-row input{border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;font-size:13.5px;background:var(--surface);color:var(--text);}
+  .statement-paper{background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:30px 32px;font-family:"Sora",sans-serif;box-shadow:var(--shadow);font-size:13px;line-height:1.6;min-height:200px;}
+  .statement-paper table{margin:14px 0;font-size:12.5px;}
+  .statement-paper table th, .statement-paper table td{padding:7px 8px;}
+  .statement-paper .sign{margin-top:18px;}
+  @media print{
+    body *{visibility:hidden;}
+    .statement-paper, .statement-paper *{visibility:visible;}
+    .statement-paper{position:absolute;left:0;top:0;width:100%;box-shadow:none;border:none;}
+  }
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:11px 18px;border-radius:9px;font-size:13px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;z-index:50;max-width:340px;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:900px){
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .grid-2{grid-template-columns:1fr;}
+    .letter-shell{grid-template-columns:1fr;}
+    .stmt-shell{grid-template-columns:1fr;}
+    .info-grid{grid-template-columns:1fr;}
+    .int-grid{grid-template-columns:1fr;}
+  }
+  @media (max-width:640px){
+    .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:20;transform:translateX(-100%);transition:transform .2s ease;}
+    .sidebar.open{transform:translateX(0);}
+    .kpi-row{grid-template-columns:1fr 1fr;}
+    .topbar{padding:12px 14px;}
+    .view{padding:16px 14px 50px;}
+  }
+</style>
+
+<!-- AUTH -->
+<div class="auth-shell" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg width="42" height="34" viewBox="24 6 132 108" role="img" aria-label="DebtJet">
+        <path d="M28 60 L152 12 L74 76 Z" fill="#FFC72C"/>
+        <path d="M74 76 L82 104 L93 91 Z" fill="#0B2A5B"/>
+        <path d="M74 76 L152 12 L106 110 Z" fill="#1E6FD9"/>
+      </svg>
+    </div>
+    <h1 id="authTitle">Sign in to DebtJet</h1>
+    <p class="sub" id="authSub">Staff access for your organization</p>
+    <form id="authForm">
+      <label>Email<input type="email" id="authEmail" required autocomplete="email" /></label>
+      <label>Password<input type="password" id="authPassword" required autocomplete="current-password" minlength="6" /></label>
+      <button class="btn primary" type="submit" id="authSubmitBtn" style="width:100%;justify-content:center;">Sign in</button>
+    </form>
+    <div class="auth-message" id="authMessage" hidden></div>
+    <button class="btn ghost" id="authToggleBtn" type="button" style="width:100%;justify-content:center;margin-top:10px;">Need an account? Sign up</button>
+  </div>
+</div>
+
+<!-- ONBOARDING (signed in, no org) -->
+<div class="auth-shell" id="onboardingScreen" hidden>
+  <div class="auth-card" style="max-width:420px;">
+    <h1>No organization yet</h1>
+    <p class="sub">Signed in as <span id="onboardingEmail"></span>. This account isn't attached to an organization yet — ask whoever set up DebtJet for your business to add you, or create a new one to start fresh.</p>
+    <form id="createOrgForm">
+      <label>Organization name<input type="text" id="orgNameInput" required placeholder="Your business name" /></label>
+      <button class="btn primary" type="submit" style="width:100%;justify-content:center;">Create organization</button>
+    </form>
+    <button class="btn ghost" id="onboardingSignOutBtn" type="button" style="width:100%;justify-content:center;margin-top:10px;">Sign out</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="mainApp" hidden>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <svg width="34" height="28" viewBox="24 6 132 108" role="img" aria-label="DebtJet">
+        <path d="M28 60 L152 12 L74 76 Z" fill="#FFC72C"/>
+        <path d="M74 76 L82 104 L93 91 Z" fill="#FFFFFF"/>
+        <path d="M74 76 L152 12 L106 110 Z" fill="#1E6FD9"/>
+      </svg>
+      <span class="brand-name">Debt<span class="jet">Jet</span></span>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Workspace</div>
+      <button class="nav-btn active" data-view="dashboard"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6.5" height="6.5" rx="1.2"/><rect x="11" y="2.5" width="6.5" height="4" rx="1.2"/><rect x="11" y="8.5" width="6.5" height="9" rx="1.2"/><rect x="2.5" y="11" width="6.5" height="6.5" rx="1.2"/></svg>Dashboard</button>
+      <button class="nav-btn" data-view="cases"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4.5" width="15" height="12" rx="1.6"/><path d="M2.5 8h15"/></svg>Debtors &amp; Cases</button>
+      <button class="nav-btn" data-view="letters"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="15" height="13" rx="1.6"/><path d="M3.2 4.5l6.8 6 6.8-6"/></svg>Letters of Demand</button>
+      <button class="nav-btn" data-view="statements"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="2.5" width="14" height="15" rx="1.6"/><path d="M6 6.5h8M6 9.8h8M6 13.1h5"/></svg>Account Statements</button>
+      <button class="nav-btn" data-view="portal"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4.5" y="2.5" width="11" height="15" rx="2"/><path d="M8 15h4"/></svg>Debtor Portal</button>
+      <button class="nav-btn" data-view="integrations"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="6" cy="6" r="3"/><circle cx="14" cy="14" r="3"/><path d="M8.2 7.8l3.6 4.4"/></svg>Integrations</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="who-row">
+        <div class="avatar" id="sidebarAvatar">–</div>
+        <div class="who"><b id="sidebarEmail">–</b><span id="sidebarOrg">–</span></div>
+      </div>
+      <button class="signout-btn" id="signOutBtn">Sign out</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="sub" id="pageSub">Overview of outstanding debt across all clients</div>
+      </div>
+      <div class="search"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M16 16l-3.5-3.5"/></svg><input placeholder="Search debtors, invoices, ABNs…" /></div>
+      <button class="btn primary" id="refreshBtn">↻ Refresh</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section class="view" data-view="dashboard">
+      <div class="kpi-row" id="kpiRow"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h3>Outstanding by age</h3></div>
+          <div class="card-body"><div class="aging-chart" id="agingChart"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Recent activity</h3></div>
+          <div class="card-body"><div class="activity" id="activityFeed"></div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-head"><h3>Cases needing attention</h3><button class="btn ghost sm" data-goto="cases">View all cases →</button></div>
+        <div class="card-body" style="padding-top:0;">
+          <table><thead><tr><th>Debtor</th><th>Status</th><th class="num">Amount</th><th>Days overdue</th><th></th></tr></thead>
+          <tbody id="attentionBody"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- CASES LIST -->
+    <section class="view" data-view="cases" hidden>
+      <div class="toolbar" id="caseFilters"></div>
+      <div class="card">
+        <table><thead><tr><th>Debtor</th><th class="num">Amount owed</th><th>Days overdue</th><th>Status</th><th></th></tr></thead>
+        <tbody id="casesBody"></tbody></table>
+      </div>
+    </section>
+
+    <!-- CASE DETAIL -->
+    <section class="view" data-view="detail" hidden id="detailView"></section>
+
+    <!-- LETTERS -->
+    <section class="view" data-view="letters" hidden>
+      <div class="letter-shell">
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-head"><h3>Templates</h3></div>
+            <div class="card-body"><div class="template-list" id="templateList"></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Applies to case</h3></div>
+            <div class="card-body">
+              <select id="letterCaseSelect" style="width:100%;"></select>
+              <div class="send-row">
+                <label style="font-size:12.5px;color:var(--text-muted);">Send via</label>
+                <select id="sendVia"><option value="outlook">Outlook</option><option value="google_workspace">Google Workspace</option></select>
+              </div>
+              <div class="send-row"><button class="btn primary" id="sendLetterBtn">Send now</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="letter-paper" id="letterPaper"></div>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <div class="card-head"><h3>Recently sent</h3></div>
+        <div class="card-body" style="padding-top:0;">
+          <table><thead><tr><th>Sent</th><th>Debtor</th><th>Letter</th><th>Sent via</th><th>Status</th></tr></thead>
+          <tbody id="sentLettersBody"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACCOUNT STATEMENTS -->
+    <section class="view" data-view="statements" hidden>
+      <div class="stmt-import-row">
+        <button class="btn sm" id="stmtImportXeroBtn">⇩ Pull from Xero</button>
+        <button class="btn sm" id="stmtImportQbBtn">⇩ Pull from QuickBooks</button>
+        <button class="btn sm primary" id="stmtImportCsvBtn">⇩ Import CSV</button>
+        <input type="file" id="stmtCsvInput" accept=".csv" hidden />
+        <span class="hint">CSV columns: debtor_name, abn, contact_name, email, phone, invoice_number, description, amount, issued_date, due_date</span>
+      </div>
+      <div class="stmt-shell">
+        <div class="card">
+          <div class="card-head"><h3>Contacts &amp; debts</h3><span style="font-size:11.5px;color:var(--text-faint);">Tick contacts to merge, tick invoices to include</span></div>
+          <div class="card-body">
+            <div class="contact-list" id="stmtContactList"></div>
+            <div class="stmt-selection-summary" id="stmtSelectionSummary"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-body" style="padding-top:16px;">
+              <div class="stmt-recipient-row">
+                <label>Statement addressed to</label>
+                <input type="text" id="stmtRecipientName" placeholder="Select contacts on the left…" />
+              </div>
+              <div class="send-row">
+                <button class="btn primary" id="stmtSaveBtn" disabled>Save statement</button>
+                <button class="btn" id="stmtPrintBtn" disabled>Print / export PDF</button>
+              </div>
+            </div>
+          </div>
+          <div class="statement-paper" id="statementPaper"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <div class="card-head"><h3>Previously generated statements</h3></div>
+        <div class="card-body" style="padding-top:0;">
+          <table><thead><tr><th>Generated</th><th>Recipient</th><th class="num">Total</th><th>Invoices</th><th>Late %</th><th></th></tr></thead>
+          <tbody id="savedStatementsBody"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEBTOR PORTAL PREVIEW -->
+    <section class="view" data-view="portal" hidden>
+      <div class="note-callout">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" style="flex:0 0 auto;margin-top:1px;"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v4.2M10 6.8v.1"/></svg>
+        <div>Live preview: this calls the same token-based function a real debtor's browser would call — no login. Pick a case to generate (or reuse) its portal link.</div>
+      </div>
+      <div style="max-width:420px;margin:0 auto 18px;">
+        <select id="portalCaseSelect" style="width:100%;"></select>
+      </div>
+      <div id="portalFrameHolder"></div>
+    </section>
+
+    <!-- INTEGRATIONS -->
+    <section class="view" data-view="integrations" hidden>
+      <div class="int-grid" id="integrationsGrid"></div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var SUPABASE_URL = 'https://dqovkhrljrvgqwtljqdh.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxb3ZraHJsanJ2Z3F3dGxqcWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NzE5OTAsImV4cCI6MjEwNTM0Nzk5MH0.oxbjVK0VeXrg-gNpwMpIYR-Kcv64UDHcfXZpihRYrzE';
+  var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  var session = null, currentOrg = null, cases = [], letterTemplates = [], currentTpl = 'reminder';
+  var stmtInvoices = [], stmtDebtors = [], stmtSelectedDebtors = {}, stmtInvoiceOverride = {}, savedStatements = [], integrationRows = [];
+  var STATUS_LABEL = {new:'New',letter_sent:'Letter sent',awaiting_response:'Awaiting response',payment_plan:'Payment plan',escalated:'Escalated',debt_recovery:'Debt recovery',tribunal:'Tribunal',resolved:'Resolved'};
+  var PIPELINE_STAGES = [{key:'statement',label:'Account Statement'},{key:'letter',label:'Letter of Demand'},{key:'debt_recovery',label:'Debt Recovery'},{key:'tribunal',label:'Tribunal'},{key:'resolved',label:'Resolved'}];
+  var TRIBUNAL_OPTIONS = ['VCAT (Victoria)','QCAT (Queensland)','NCAT (New South Wales)','SAT (Western Australia)','SACAT (South Australia)','TASCAT (Tasmania)','ACAT (ACT)','NTCAT (Northern Territory)','Magistrates/Local Court','Other'];
+  var currentCaseFilter = 'all';
+  function pipelineIndex(status){
+    if(status==='new') return 0;
+    if(status==='letter_sent'||status==='awaiting_response'||status==='payment_plan') return 1;
+    if(status==='debt_recovery'||status==='escalated') return 2;
+    if(status==='tribunal') return 3;
+    if(status==='resolved') return 4;
+    return 0;
+  }
+
+  function money(n){ n = Number(n)||0; return '$'+n.toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmt(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}); }
+  function pill(status){ return '<span class="pill '+status+'">'+(STATUS_LABEL[status]||status)+'</span>'; }
+
+  var toastEl = document.getElementById('toast'), toastTimer;
+  function toast(msg){ toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function(){toastEl.classList.remove('show');},3200); }
+
+  /* ---------- screen switching ---------- */
+  function showTopLevel(which){
+    document.getElementById('authScreen').hidden = which !== 'auth';
+    document.getElementById('onboardingScreen').hidden = which !== 'onboarding';
+    document.getElementById('mainApp').hidden = which !== 'app';
+  }
+
+  /* ---------- auth ---------- */
+  var authMode = 'signin';
+  function updateAuthModeUI(){
+    document.getElementById('authTitle').textContent = authMode === 'signin' ? 'Sign in to DebtJet' : 'Create your account';
+    document.getElementById('authSubmitBtn').textContent = authMode === 'signin' ? 'Sign in' : 'Sign up';
+    document.getElementById('authToggleBtn').textContent = authMode === 'signin' ? 'Need an account? Sign up' : 'Already have an account? Sign in';
+  }
+  document.getElementById('authToggleBtn').addEventListener('click', function(){
+    authMode = authMode === 'signin' ? 'signup' : 'signin';
+    updateAuthModeUI();
+  });
+  function setAuthMessage(msg, isError){
+    var el = document.getElementById('authMessage');
+    if(!msg){ el.hidden = true; return; }
+    el.hidden = false; el.textContent = msg; el.className = 'auth-message' + (isError ? ' error' : '');
+  }
+  document.getElementById('authForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var email = document.getElementById('authEmail').value.trim();
+    var password = document.getElementById('authPassword').value;
+    setAuthMessage(null);
+    var btn = document.getElementById('authSubmitBtn'); btn.disabled = true;
+    try{
+      if(authMode === 'signup'){
+        var r = await sb.auth.signUp({ email: email, password: password });
+        if(r.error){ setAuthMessage(r.error.message, true); return; }
+        if(!r.data.session){
+          setAuthMessage('Account created. If email confirmation is required, check your inbox, then sign in.', false);
+          authMode = 'signin'; updateAuthModeUI();
+          return;
+        }
+        session = r.data.session;
+      } else {
+        var r2 = await sb.auth.signInWithPassword({ email: email, password: password });
+        if(r2.error){ setAuthMessage(r2.error.message, true); return; }
+        session = r2.data.session;
+      }
+      await boot();
+    } finally { btn.disabled = false; }
+  });
+
+  document.getElementById('createOrgForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var name = document.getElementById('orgNameInput').value.trim();
+    if(!name) return;
+    var r = await sb.rpc('create_organization', { org_name: name, org_abn: null });
+    if(r.error){ toast('Could not create organization: ' + r.error.message); return; }
+    await boot();
+  });
+
+  var DEMO_EMAIL = 'demo@debtjet.app';
+  var DEMO_PASSWORD = 'DemoPass123!';
+  var XERO_CLIENT_ID = 'FFFBC6E6286748A49D04DF87CEF85B5F';
+  var XERO_REDIRECT_URI = 'https://dqovkhrljrvgqwtljqdh.supabase.co/functions/v1/xero-oauth-callback';
+  async function signInDemo(){
+    var r = await sb.auth.signInWithPassword({ email: DEMO_EMAIL, password: DEMO_PASSWORD });
+    if(r.error){ toast('Demo sign-in failed: ' + r.error.message); showTopLevel('auth'); return; }
+    session = r.data.session;
+    await boot();
+  }
+  async function signOut(){ await sb.auth.signOut(); session = null; currentOrg = null; toast('Signed out — reconnecting as demo user…'); await signInDemo(); }
+  document.getElementById('onboardingSignOutBtn').addEventListener('click', signOut);
+  document.getElementById('signOutBtn').addEventListener('click', signOut);
+
+  /* ---------- boot / org resolution ---------- */
+  async function boot(){
+    var r = await sb.from('org_members').select('org_id, role, organizations(name)').eq('user_id', session.user.id).limit(1).maybeSingle();
+    if(r.error || !r.data){
+      document.getElementById('onboardingEmail').textContent = session.user.email;
+      showTopLevel('onboarding');
+      return;
+    }
+    currentOrg = { id: r.data.org_id, role: r.data.role, name: r.data.organizations ? r.data.organizations.name : 'Your organization' };
+    document.getElementById('sidebarEmail').textContent = session.user.email;
+    document.getElementById('sidebarOrg').textContent = currentOrg.name + ' · ' + currentOrg.role + (session.user.email === DEMO_EMAIL ? ' · demo login' : '');
+    document.getElementById('sidebarAvatar').textContent = (session.user.email || '?').slice(0,2).toUpperCase();
+    showTopLevel('app');
+    await refreshAll();
+  }
+
+  async function refreshAll(){
+    await loadCases();
+    await loadLetterTemplates();
+    renderDashboard();
+    renderCasesTable('all');
+    renderLetterCaseOptions();
+    renderPortalCaseOptions();
+    await renderIntegrations();
+    await loadStatementsData();
+    renderStatementContacts();
+    await loadSavedStatements();
+  }
+  document.getElementById('refreshBtn').addEventListener('click', function(){ refreshAll(); toast('Refreshed.'); });
+
+  /* ---------- data loading ---------- */
+  async function loadCases(){
+    var r = await sb.from('cases')
+      .select('id, status, interest_rate, opened_at, tribunal_body, debtors(id,name,abn,contact_name,email,phone), invoices(id,invoice_number,description,amount,due_date,issued_date,status)')
+      .eq('org_id', currentOrg.id)
+      .order('opened_at', { ascending: true });
+    if(r.error){ toast('Could not load cases: ' + r.error.message); cases = []; return; }
+    var today = new Date();
+    cases = (r.data || []).map(function(c){
+      var open = (c.invoices||[]).filter(function(i){ return i.status !== 'paid' && i.status !== 'written_off'; });
+      var principal = open.reduce(function(s,i){ return s + Number(i.amount); }, 0);
+      var daysOverdue = open.reduce(function(mx,i){ return Math.max(mx, Math.round((today - new Date(i.due_date)) / 86400000)); }, 0);
+      var interest = Math.round(principal * Number(c.interest_rate) * Math.max(daysOverdue,0) / 365 * 100) / 100;
+      return {
+        id: c.id, status: c.status, interestRate: Number(c.interest_rate), tribunalBody: c.tribunal_body,
+        debtor: c.debtors || {}, invoices: open,
+        invoiceNumber: open[0] ? open[0].invoice_number : '—',
+        dueDate: open[0] ? open[0].due_date : null,
+        amount: principal, daysOverdue: daysOverdue, interest: interest, total: principal + interest
+      };
+    });
+  }
+
+  async function loadLetterTemplates(){
+    var r = await sb.from('letter_templates').select('*').eq('org_id', currentOrg.id);
+    letterTemplates = r.data || [];
+  }
+
+  /* ---------- dashboard ---------- */
+  function renderDashboard(){
+    var totalOutstanding = cases.reduce(function(s,c){ return s + c.amount; }, 0);
+    var totalInterest = cases.reduce(function(s,c){ return s + c.interest; }, 0);
+    document.getElementById('kpiRow').innerHTML =
+      '<div class="kpi"><div class="label">Total outstanding</div><div class="value">'+money(totalOutstanding)+'</div><div class="delta">Across '+cases.length+' open cases</div></div>'+
+      '<div class="kpi"><div class="label">Accrued interest</div><div class="value">'+money(totalInterest)+'</div><div class="delta">Live, computed from due dates</div></div>'+
+      '<div class="kpi"><div class="label">Letter templates</div><div class="value">'+letterTemplates.length+'</div><div class="delta">reminder / first / final</div></div>'+
+      '<div class="kpi"><div class="label">In recovery / tribunal</div><div class="value">'+cases.filter(function(c){return c.status==='debt_recovery'||c.status==='tribunal'||c.status==='escalated';}).length+'</div><div class="delta">'+cases.filter(function(c){return c.status==='tribunal';}).length+' at tribunal</div></div>';
+
+    var buckets = [
+      {label:'0–30 days', cls:'b1', min:0, max:30},
+      {label:'31–60 days', cls:'b2', min:31, max:60},
+      {label:'61–90 days', cls:'b3', min:61, max:90},
+      {label:'90+ days', cls:'b4', min:91, max:999999}
+    ];
+    var sums = buckets.map(function(b){ return cases.filter(function(c){ return c.daysOverdue>=b.min && c.daysOverdue<=b.max; }).reduce(function(s,c){return s+c.amount;},0); });
+    var maxSum = Math.max.apply(null, sums.concat([1]));
+    document.getElementById('agingChart').innerHTML = buckets.map(function(b,i){
+      var h = Math.max(4, Math.round(sums[i]/maxSum*100));
+      return '<div class="aging-bar '+b.cls+'"><div class="amt">'+money(sums[i]).replace('.00','')+'</div><div class="bar" style="height:'+h+'%"></div><div class="lbl">'+b.label+'</div></div>';
+    }).join('');
+
+    var top = cases.slice().sort(function(a,b){return b.daysOverdue-a.daysOverdue;}).slice(0,4);
+    document.getElementById('attentionBody').innerHTML = top.length ? top.map(function(c){
+      return '<tr class="clickable" data-case="'+c.id+'"><td class="name-cell">'+c.debtor.name+'</td><td>'+pill(c.status)+'</td><td class="num">'+money(c.total)+'</td><td>'+c.daysOverdue+'</td><td><button class="btn sm ghost">Open →</button></td></tr>';
+    }).join('') : '<tr><td colspan="5" class="empty-note">No cases yet.</td></tr>';
+    Array.prototype.forEach.call(document.getElementById('attentionBody').querySelectorAll('[data-case]'), function(el){ el.addEventListener('click', function(){ openCase(this.getAttribute('data-case')); }); });
+
+    document.getElementById('activityFeed').innerHTML = cases.length ? '<div class="empty-note">Open a case to see its full timeline.</div>' : '<div class="empty-note">Nothing yet.</div>';
+  }
+
+  /* ---------- cases list ---------- */
+  document.getElementById('caseFilters').innerHTML = ['all','new','letter_sent','awaiting_response','payment_plan','debt_recovery','tribunal'].map(function(f,i){
+    return '<button class="chip'+(i===0?' active':'')+'" data-filter="'+f+'">'+(f==='all'?'All':STATUS_LABEL[f])+'</button>';
+  }).join('');
+  document.getElementById('caseFilters').addEventListener('click', function(e){
+    var btn = e.target.closest('.chip'); if(!btn) return;
+    Array.prototype.forEach.call(document.querySelectorAll('#caseFilters .chip'), function(c){c.classList.remove('active');});
+    btn.classList.add('active');
+    currentCaseFilter = btn.getAttribute('data-filter');
+    renderCasesTable(currentCaseFilter);
+  });
+
+  function renderCasesTable(filter){
+    var rows = cases.filter(function(c){ return filter==='all' || c.status===filter; });
+    document.getElementById('casesBody').innerHTML = rows.length ? rows.map(function(c){
+      return '<tr class="clickable" data-case="'+c.id+'"><td class="name-cell">'+c.debtor.name+'<div class="sub">'+c.invoiceNumber+' · ABN '+(c.debtor.abn||'—')+'</div></td>'+
+        '<td class="num">'+money(c.total)+'</td><td>'+c.daysOverdue+' days</td><td>'+pill(c.status)+'</td><td><button class="btn sm ghost">Open →</button></td></tr>';
+    }).join('') : '<tr><td colspan="5" class="empty-note">No cases match this filter.</td></tr>';
+    Array.prototype.forEach.call(document.getElementById('casesBody').querySelectorAll('[data-case]'), function(el){ el.addEventListener('click', function(){ openCase(this.getAttribute('data-case')); }); });
+  }
+
+  /* ---------- case detail ---------- */
+  var EVENT_TONE = { escalated:'crit', no_response:'warn', letter_sent:'warn', payment_plan_accepted:'ok', invoice_issued:'ok', invoice_due:'ok', reminder_sent:'ok', portal_viewed:'ok', note_added:'ok', payment_logged:'ok', debt_recovery_started:'warn', tribunal_referred:'crit', resolved:'ok' };
+
+  function renderPipeline(c){
+    var idx = pipelineIndex(c.status);
+    return '<div class="pipeline">'+PIPELINE_STAGES.map(function(s,i){
+      var cls = i<idx ? 'done' : (i===idx ? 'current' : '');
+      return '<div class="pipeline-step '+cls+'">'+s.label+'</div>';
+    }).join('')+'</div>';
+  }
+  function renderPipelineActions(c){
+    if(c.status === 'resolved') return '<div class="empty-note" style="margin-top:10px;">This case is resolved.</div>';
+    var html = '<div class="action-row" style="margin-top:10px;align-items:center;">';
+    if(c.status === 'tribunal'){
+      html += '<div class="info-box" style="margin:0;"><div class="k">Referred to</div><div class="v small">'+(c.tribunalBody||'—')+'</div></div>';
+    } else if(c.status === 'debt_recovery' || c.status === 'escalated'){
+      html += '<select id="tribunalSelect">'+TRIBUNAL_OPTIONS.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')+'</select>'
+        + '<button class="btn primary" id="toTribunalBtn">Refer to tribunal</button>';
+    } else {
+      html += '<button class="btn primary" id="toDebtRecoveryBtn">Move to Debt Recovery</button>';
+    }
+    html += '<button class="btn" id="markResolvedBtn">Mark resolved</button></div>';
+    return html;
+  }
+
+  async function openCase(id){
+    var c = cases.filter(function(x){return x.id===id;})[0];
+    if(!c) return;
+    var ev = await sb.from('case_events').select('*').eq('case_id', id).order('occurred_at', { ascending: true });
+    var events = ev.data || [];
+    var html = ''
+      +'<button class="back-link" id="backToCases">← Back to Debtors &amp; Cases</button>'
+      +'<div class="detail-head"><div><h2>'+c.debtor.name+'</h2><div class="meta">ABN '+(c.debtor.abn||'—')+' · '+(c.debtor.contact_name||'')+' · '+(c.debtor.email||'')+' · '+(c.debtor.phone||'')+'</div></div>'
+        +'<div class="action-row"><button class="btn primary" data-goto="letters" data-preselect="'+c.id+'">Send letter of demand</button></div></div>'
+      +'<div class="card" style="margin-bottom:16px;"><div class="card-head"><h3>Escalation pipeline</h3></div><div class="card-body">'
+        +renderPipeline(c) + renderPipelineActions(c)
+      +'</div></div>'
+      +'<div class="info-grid">'
+        +'<div class="info-box"><div class="k">Total owing</div><div class="v">'+money(c.total)+'</div></div>'
+        +'<div class="info-box"><div class="k">Principal</div><div class="v">'+money(c.amount)+'</div></div>'
+        +'<div class="info-box"><div class="k">Interest accrued</div><div class="v">'+money(c.interest)+'<span style="font-weight:400;font-size:11.5px;color:var(--text-muted);"> · '+(c.interestRate*100).toFixed(0)+'% p.a., '+c.daysOverdue+' days</span></div></div>'
+        +'<div class="info-box"><div class="k">Status</div><div class="v small">'+pill(c.status)+'</div></div>'
+        +'<div class="info-box"><div class="k">Due date</div><div class="v small">'+fmt(c.dueDate)+' · '+c.daysOverdue+' days overdue</div></div>'
+        +'<div class="info-box"><div class="k">Invoices</div><div class="v small">'+c.invoices.map(function(i){return i.invoice_number;}).join(', ')+'</div></div>'
+      +'</div>'
+      +'<div class="card"><div class="card-head"><h3>Log a payment</h3></div><div class="card-body">'
+        +'<div class="inline-form"><label>Amount (AUD)<input type="number" step="0.01" min="0" id="paymentAmount"/></label><label>Date<input type="date" id="paymentDate" value="'+new Date().toISOString().slice(0,10)+'"/></label><button class="btn primary" id="logPaymentBtn">Log payment</button></div>'
+      +'</div></div>'
+      +'<div class="card" style="margin-top:16px;"><div class="card-head"><h3>Case timeline</h3></div><div class="card-body">'
+        +'<div class="timeline">'+(events.length ? events.map(function(t){
+          return '<div class="tl-item"><div class="tl-dot '+(EVENT_TONE[t.event_type]||'ok')+'"></div><div class="tl-body"><b>'+t.title+'</b><p>'+(t.body||'')+'</p><div class="tl-date">'+fmt(t.occurred_at)+'</div></div></div>';
+        }).join('') : '<div class="empty-note">No events yet.</div>')+'</div>'
+      +'</div></div>';
+    document.getElementById('detailView').innerHTML = html;
+    showView('detail');
+    document.getElementById('backToCases').addEventListener('click', function(){ showView('cases'); setActiveNav('cases'); });
+    var gotoBtn = document.getElementById('detailView').querySelector('[data-goto]');
+    if(gotoBtn) gotoBtn.addEventListener('click', function(){ selectLetterCase(c.id); showView('letters'); setActiveNav('letters'); });
+    document.getElementById('logPaymentBtn').addEventListener('click', async function(){
+      var amt = parseFloat(document.getElementById('paymentAmount').value);
+      var d = document.getElementById('paymentDate').value;
+      if(!amt || amt<=0){ toast('Enter an amount first.'); return; }
+      var invId = c.invoices[0] ? c.invoices[0].id : null;
+      var r = await sb.from('payments').insert({ org_id: currentOrg.id, case_id: c.id, invoice_id: invId, amount: amt, paid_at: d, method: 'manual', source: 'manual', created_by: session.user.id });
+      if(r.error){ toast('Could not log payment: ' + r.error.message); return; }
+      await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'payment_logged', title: 'Payment logged', body: money(amt) + ' recorded manually', created_by: session.user.id });
+      toast('Payment logged.');
+      await loadCases(); openCase(c.id); renderDashboard(); renderCasesTable(currentCaseFilter);
+    });
+    var toDR = document.getElementById('toDebtRecoveryBtn');
+    if(toDR) toDR.addEventListener('click', async function(){
+      var r = await sb.from('cases').update({ status: 'debt_recovery' }).eq('id', c.id);
+      if(r.error){ toast('Could not update case: ' + r.error.message); return; }
+      await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'debt_recovery_started', title: 'Moved to Debt Recovery', body: 'Escalated beyond letters of demand.', created_by: session.user.id });
+      toast('Case moved to Debt Recovery.');
+      await loadCases(); openCase(c.id); renderDashboard(); renderCasesTable(currentCaseFilter);
+    });
+    var toTrib = document.getElementById('toTribunalBtn');
+    if(toTrib) toTrib.addEventListener('click', async function(){
+      var body = document.getElementById('tribunalSelect').value;
+      var r = await sb.from('cases').update({ status: 'tribunal', tribunal_body: body }).eq('id', c.id);
+      if(r.error){ toast('Could not update case: ' + r.error.message); return; }
+      await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'tribunal_referred', title: 'Referred to ' + body, body: 'Case escalated to ' + body + ' for formal hearing.', created_by: session.user.id });
+      toast('Referred to ' + body + '.');
+      await loadCases(); openCase(c.id); renderDashboard(); renderCasesTable(currentCaseFilter);
+    });
+    var markRes = document.getElementById('markResolvedBtn');
+    if(markRes) markRes.addEventListener('click', async function(){
+      var r = await sb.from('cases').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', c.id);
+      if(r.error){ toast('Could not update case: ' + r.error.message); return; }
+      await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'resolved', title: 'Case resolved', body: 'Marked resolved.', created_by: session.user.id });
+      toast('Case marked resolved.');
+      await loadCases(); openCase(c.id); renderDashboard(); renderCasesTable(currentCaseFilter);
+    });
+  }
+
+  var TITLES = {
+    dashboard:['Dashboard','Overview of outstanding debt across all clients'],
+    cases:['Debtors & Cases','Every open and resolved recovery case'],
+    detail:['Case detail','Full history for this debtor'],
+    letters:['Letters of Demand','Draft, preview and send recovery correspondence'],
+    statements:['Account Statements','Compile multi-invoice statements for one or more contacts'],
+    portal:['Debtor Portal','Live preview of the self-service page your debtors see'],
+    integrations:['Integrations','Connected accounting, email and calendar tools']
+  };
+  function showView(name){
+    Array.prototype.forEach.call(document.querySelectorAll('.view'), function(v){ v.hidden = v.getAttribute('data-view') !== name; });
+    document.getElementById('pageTitle').textContent = TITLES[name][0];
+    document.getElementById('pageSub').textContent = TITLES[name][1];
+    document.getElementById('sidebar').classList.remove('open');
+    window.scrollTo(0,0);
+  }
+  function setActiveNav(name){ Array.prototype.forEach.call(document.querySelectorAll('.nav-btn'), function(b){ b.classList.toggle('active', b.getAttribute('data-view')===name); }); }
+  Array.prototype.forEach.call(document.querySelectorAll('.nav-btn[data-view]'), function(btn){ btn.addEventListener('click', function(){ var v=this.getAttribute('data-view'); showView(v); setActiveNav(v); }); });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-goto="cases"]'), function(btn){ btn.addEventListener('click', function(){ showView('cases'); setActiveNav('cases'); }); });
+
+  /* ---------- letters ---------- */
+  var TPL_LABEL = { reminder:'Friendly reminder', first_demand:'First letter of demand', final_demand:'Final letter of demand' };
+  function renderTemplateList(){
+    document.getElementById('templateList').innerHTML = ['reminder','first_demand','final_demand'].map(function(t){
+      var tpl = letterTemplates.filter(function(x){return x.type===t;})[0];
+      return '<button class="tpl-btn'+(t===currentTpl?' active':'')+'" data-tpl="'+t+'"><b>'+TPL_LABEL[t]+'</b><span>'+(tpl?tpl.name:'No template saved for this org yet')+'</span></button>';
+    }).join('');
+    Array.prototype.forEach.call(document.getElementById('templateList').querySelectorAll('.tpl-btn'), function(b){
+      b.addEventListener('click', function(){ currentTpl = this.getAttribute('data-tpl'); renderTemplateList(); renderLetterPreview(); });
+    });
+  }
+  function renderLetterCaseOptions(){
+    var sel = document.getElementById('letterCaseSelect');
+    sel.innerHTML = cases.map(function(c){ return '<option value="'+c.id+'">'+c.debtor.name+' — '+c.invoiceNumber+'</option>'; }).join('');
+    renderTemplateList();
+    renderLetterPreview();
+    refreshSentLetters();
+  }
+  function selectLetterCase(id){ document.getElementById('letterCaseSelect').value = id; renderLetterPreview(); }
+  document.getElementById('letterCaseSelect').addEventListener('change', renderLetterPreview);
+
+  function fillTemplate(str, c){
+    return (str||'').split('{{contact_name}}').join(c.debtor.contact_name || c.debtor.name)
+      .split('{{invoice_number}}').join(c.invoiceNumber)
+      .split('{{amount}}').join(money(c.amount))
+      .split('{{total_owing}}').join(money(c.total))
+      .split('{{due_date}}').join(fmt(c.dueDate))
+      .split('{{interest_rate}}').join((c.interestRate*100).toFixed(0)+'%');
+  }
+  function renderLetterPreview(){
+    var id = document.getElementById('letterCaseSelect').value;
+    var c = cases.filter(function(x){return x.id===id;})[0];
+    var tpl = letterTemplates.filter(function(x){return x.type===currentTpl;})[0];
+    if(!c || !tpl){ document.getElementById('letterPaper').innerHTML = '<div class="empty-note">No case or template available yet.</div>'; return; }
+    var subject = fillTemplate(tpl.subject_template, c);
+    var body = fillTemplate(tpl.body_template, c);
+    document.getElementById('letterPaper').innerHTML =
+      '<div class="lh-brand"><div><div class="n">DebtJet</div><div style="color:var(--text-muted);font-size:11px;">on behalf of '+currentOrg.name+'</div></div>'
+      +'<div class="addr">'+fmt(new Date())+'<br>'+c.debtor.name+'<br>Attn: '+(c.debtor.contact_name||'')+'</div></div>'
+      +'<div class="subj">'+subject+'</div><p>'+body+'</p>'
+      +'<table><tr><th style="text-align:left;">Invoice principal</th><td style="text-align:right;">'+money(c.amount)+'</td></tr>'
+      +'<tr><th style="text-align:left;">Interest ('+c.daysOverdue+' days @ '+(c.interestRate*100).toFixed(0)+'% p.a.)</th><td style="text-align:right;">'+money(c.interest)+'</td></tr>'
+      +'<tr><th style="text-align:left;">Total now due</th><td style="text-align:right;">'+money(c.total)+'</td></tr></table>'
+      +'<div class="sign">Regards,<br><b>Accounts team</b><br>'+currentOrg.name+'<br>via DebtJet</div>';
+  }
+  document.getElementById('sendLetterBtn').addEventListener('click', async function(){
+    var id = document.getElementById('letterCaseSelect').value;
+    var c = cases.filter(function(x){return x.id===id;})[0];
+    var tpl = letterTemplates.filter(function(x){return x.type===currentTpl;})[0];
+    var sendVia = document.getElementById('sendVia').value;
+    if(!c || !tpl){ toast('Nothing to send yet.'); return; }
+    var subject = fillTemplate(tpl.subject_template, c), body = fillTemplate(tpl.body_template, c);
+    var r = await sb.from('letters').insert({ org_id: currentOrg.id, case_id: c.id, template_id: tpl.id, type: currentTpl, subject: subject, body: body, amount_at_send: c.amount, interest_at_send: c.interest, send_via: sendVia, status: 'sent', sent_at: new Date().toISOString(), created_by: session.user.id });
+    if(r.error){ toast('Could not send: ' + r.error.message); return; }
+    await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'letter_sent', title: tpl.name + ' sent', body: 'Sent via ' + sendVia, created_by: session.user.id });
+    toast('Sent "'+tpl.name+'" to '+c.debtor.name+'.');
+    refreshSentLetters();
+  });
+  async function refreshSentLetters(){
+    var r = await sb.from('letters').select('sent_at, type, send_via, status, cases(debtors(name))').eq('org_id', currentOrg.id).order('sent_at', { ascending: false }).limit(10);
+    var rows = r.data || [];
+    document.getElementById('sentLettersBody').innerHTML = rows.length ? rows.map(function(l){
+      return '<tr><td>'+fmt(l.sent_at)+'</td><td>'+(l.cases && l.cases.debtors ? l.cases.debtors.name : '—')+'</td><td>'+(TPL_LABEL[l.type]||l.type)+'</td><td>'+(l.send_via||'—')+'</td><td><span class="pill letter_sent">'+l.status+'</span></td></tr>';
+    }).join('') : '<tr><td colspan="5" class="empty-note">No letters sent yet.</td></tr>';
+  }
+
+  /* ---------- debtor portal preview ---------- */
+  function renderPortalCaseOptions(){
+    var sel = document.getElementById('portalCaseSelect');
+    sel.innerHTML = cases.map(function(c){ return '<option value="'+c.id+'">'+c.debtor.name+' — '+c.invoiceNumber+'</option>'; }).join('');
+    sel.onchange = function(){ loadPortalSnapshot(sel.value); };
+    if(cases.length) loadPortalSnapshot(cases[0].id);
+  }
+  async function ensurePortalToken(caseId){
+    var existing = await sb.from('debtor_portal_tokens').select('token').eq('case_id', caseId).is('revoked_at', null).gt('expires_at', new Date().toISOString()).limit(1).maybeSingle();
+    if(existing.data) return existing.data.token;
+    var ins = await sb.from('debtor_portal_tokens').insert({ org_id: currentOrg.id, case_id: caseId }).select('token').single();
+    if(ins.error){ toast('Could not create portal link: ' + ins.error.message); return null; }
+    return ins.data.token;
+  }
+  async function loadPortalSnapshot(caseId){
+    document.getElementById('portalFrameHolder').innerHTML = '<div class="empty-note" style="text-align:center;">Loading…</div>';
+    var token = await ensurePortalToken(caseId);
+    if(!token) return;
+    var r = await sb.rpc('get_debtor_portal_snapshot', { p_token: token });
+    if(r.error || !r.data || r.data.error){
+      document.getElementById('portalFrameHolder').innerHTML = '<div class="empty-note" style="text-align:center;">Could not load snapshot.</div>';
+      return;
+    }
+    var s = r.data;
+    document.getElementById('portalFrameHolder').innerHTML =
+      '<div class="portal-frame"><div class="portal-bar"><svg width="24" height="19" viewBox="24 6 132 108" role="img" aria-label="DebtJet"><path d="M28 60 L152 12 L74 76 Z" fill="#FFC72C"/><path d="M74 76 L82 104 L93 91 Z" fill="#0B2A5B"/><path d="M74 76 L152 12 L106 110 Z" fill="#1E6FD9"/></svg><span class="n">DebtJet</span></div>'
+      +'<div class="portal-body"><h2>'+s.debtor_name+'</h2><div class="sub">'+(s.invoices&&s.invoices[0]?s.invoices[0].invoice_number:'')+' · '+s.org_name+'</div>'
+      +'<div class="p-amount"><div class="big">'+money(s.total_owing)+'</div><div class="lbl">Total owing, including interest to today</div></div>'
+      +'<div class="p-line"><span>Principal</span><span>'+money(s.principal)+'</span></div>'
+      +'<div class="p-line"><span>Interest accrued ('+s.days_overdue+' days)</span><span>'+money(s.interest_accrued)+'</span></div>'
+      +'<div class="p-line"><span>Case status</span><span>'+(STATUS_LABEL[s.case_status]||s.case_status)+'</span></div>'
+      +'<div class="p-actions">'
+        +'<button class="btn primary" id="portalPayBtn">Pay in full — '+money(s.total_owing)+'</button>'
+        +'<button class="btn" id="portalPlanBtn">Propose a payment plan</button>'
+      +'</div></div></div>';
+    document.getElementById('portalPayBtn').addEventListener('click', function(){ toast('Payment processing is a preview here — the click was logged as a real case event.'); sb.rpc('log_debtor_portal_action', { p_token: token, p_action: 'portal_pay_clicked', p_note: 'Debtor clicked Pay in full in preview' }); });
+    document.getElementById('portalPlanBtn').addEventListener('click', function(){ toast('Payment-plan form is a preview here — the click was logged as a real case event.'); sb.rpc('log_debtor_portal_action', { p_token: token, p_action: 'portal_plan_clicked', p_note: 'Debtor clicked Propose a payment plan in preview' }); });
+  }
+
+  /* ---------- integrations ---------- */
+  var PROVIDER_META = {
+    xero: { label:'Xero', color:'#13B5EA', letter:'X', desc:'Syncs invoices, contacts and payment status. New overdue invoices create a case automatically.' },
+    quickbooks: { label:'QuickBooks', color:'#2CA01C', letter:'Q', desc:'Syncs invoices and customer records for businesses using QuickBooks Online instead of Xero.' },
+    outlook: { label:'Outlook', color:'#2E8FC4', letter:'O', desc:'Sends letters of demand and reminders, and logs replies against the matching case automatically.' },
+    google_workspace: { label:'Google Workspace', color:'#D9B310', letter:'G', desc:'Alternative send channel for letters and reminders, plus calendar holds for follow-up call reminders.' }
+  };
+  async function renderIntegrations(){
+    var r = await sb.from('integration_connections').select('*').eq('org_id', currentOrg.id);
+    var rows = r.data || [];
+    integrationRows = rows;
+    var providers = ['xero','quickbooks','outlook','google_workspace'];
+    document.getElementById('integrationsGrid').innerHTML = providers.map(function(p){
+      var meta = PROVIDER_META[p];
+      var row = rows.filter(function(x){return x.provider===p;})[0];
+      var connected = row && row.status === 'connected';
+      return '<div class="int-card"><div class="int-top"><div class="int-logo" style="background:'+meta.color+';">'+meta.letter+'</div>'
+        +'<span class="pill '+(connected?'connected':'not_connected')+'">'+(connected?'Connected':'Not connected')+'</span></div>'
+        +'<b>'+meta.label+'</b><p>'+meta.desc+'</p>'
+        +'<div class="int-meta">'+(connected ? (p==='xero' ? 'Connected — sync of live invoices not built yet' : 'Connected — status only, OAuth flow not built yet') : 'Not yet connected')+'</div>'
+        +'<button class="btn sm '+(connected?'':'primary')+'" data-provider="'+p+'" data-connected="'+connected+'">'+(connected?'Disconnect':(p==='xero'?'Connect with Xero':'Connect (demo status)'))+'</button></div>';
+    }).join('');
+    Array.prototype.forEach.call(document.getElementById('integrationsGrid').querySelectorAll('[data-provider]'), function(btn){
+      btn.addEventListener('click', async function(){
+        var p = this.getAttribute('data-provider');
+        var wasConnected = this.getAttribute('data-connected') === 'true';
+        if(p === 'xero' && !wasConnected){
+          var state = btoa(currentOrg.id);
+          var authUrl = 'https://login.xero.com/identity/connect/authorize'
+            + '?response_type=code'
+            + '&client_id=' + encodeURIComponent(XERO_CLIENT_ID)
+            + '&redirect_uri=' + encodeURIComponent(XERO_REDIRECT_URI)
+            + '&scope=' + encodeURIComponent('offline_access accounting.invoices accounting.payments accounting.contacts')
+            + '&state=' + encodeURIComponent(state);
+          window.location.href = authUrl;
+          return;
+        }
+        var r2 = await sb.from('integration_connections').upsert({ org_id: currentOrg.id, provider: p, status: wasConnected ? 'not_connected' : 'connected', display_name: wasConnected ? null : (PROVIDER_META[p].label + ' (demo connection)'), connected_by: session.user.id }, { onConflict: 'org_id,provider' });
+        if(r2.error){ toast(r2.error.message); return; }
+        toast(wasConnected ? (PROVIDER_META[p].label + ' disconnected.') : (PROVIDER_META[p].label + ' marked as connected (no real OAuth yet).'));
+        renderIntegrations();
+      });
+    });
+  }
+
+  /* ---------- account statements ---------- */
+  async function loadStatementsData(){
+    var r = await sb.from('invoices')
+      .select('id, debtor_id, case_id, invoice_number, description, amount, issued_date, due_date, status, debtors(id,name,abn,contact_name,email,phone)')
+      .eq('org_id', currentOrg.id).neq('status', 'written_off').order('due_date', { ascending: true });
+    var invs = r.data || [];
+    var invIds = invs.map(function(i){ return i.id; });
+    var pay = invIds.length ? await sb.from('payments').select('invoice_id, amount, paid_at').eq('org_id', currentOrg.id).in('invoice_id', invIds) : { data: [] };
+    var paysByInv = {};
+    (pay.data || []).forEach(function(p){ (paysByInv[p.invoice_id] = paysByInv[p.invoice_id] || []).push(p); });
+    var today = new Date();
+    stmtInvoices = invs.map(function(i){
+      var paidRows = paysByInv[i.id] || [];
+      var paidSum = paidRows.reduce(function(s,p){ return s + Number(p.amount); }, 0);
+      var fullyPaid = i.status === 'paid' || paidSum >= Number(i.amount) - 0.01;
+      var lastPaidAt = paidRows.length ? paidRows.reduce(function(mx,p){ return p.paid_at > mx ? p.paid_at : mx; }, paidRows[0].paid_at) : null;
+      var isLate = fullyPaid ? (lastPaidAt ? new Date(lastPaidAt) > new Date(i.due_date) : false) : new Date(i.due_date) < today;
+      return {
+        id: i.id, debtor_id: i.debtor_id, case_id: i.case_id, debtor: i.debtors || {},
+        invoice_number: i.invoice_number, description: i.description, amount: Number(i.amount),
+        issued_date: i.issued_date, due_date: i.due_date, status: i.status,
+        fullyPaid: fullyPaid, isLate: isLate
+      };
+    });
+    var dmap = {};
+    stmtInvoices.forEach(function(i){
+      if(!i.debtor_id) return;
+      if(!dmap[i.debtor_id]) dmap[i.debtor_id] = { id: i.debtor_id, name: i.debtor.name, abn: i.debtor.abn, contact_name: i.debtor.contact_name, email: i.debtor.email, invoices: [] };
+      dmap[i.debtor_id].invoices.push(i);
+    });
+    stmtDebtors = Object.keys(dmap).map(function(k){ return dmap[k]; }).sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+  }
+
+  function invoiceDefaultChecked(inv){ return !inv.fullyPaid; }
+  function isInvoiceChecked(inv){ return stmtInvoiceOverride.hasOwnProperty(inv.id) ? stmtInvoiceOverride[inv.id] : invoiceDefaultChecked(inv); }
+
+  function renderStatementContacts(){
+    var list = document.getElementById('stmtContactList');
+    list.innerHTML = stmtDebtors.length ? stmtDebtors.map(function(d){
+      var totalOwing = d.invoices.filter(function(i){ return !i.fullyPaid; }).reduce(function(s,i){ return s+i.amount; }, 0);
+      var checked = !!stmtSelectedDebtors[d.id];
+      var rows = d.invoices.map(function(inv){
+        var chk = isInvoiceChecked(inv);
+        return '<label class="debt-row"><input type="checkbox" class="inv-check" data-inv="'+inv.id+'" '+(chk?'checked':'')+' />'
+          +'<span class="debt-main"><b>'+(inv.invoice_number||'—')+'</b><span class="debt-desc">'+(inv.description||'')+'</span></span>'
+          +'<span class="debt-due">'+fmt(inv.due_date)+'</span>'
+          +'<span class="debt-amt">'+money(inv.amount)+'</span>'
+          +'<span class="pill '+(inv.fullyPaid?'resolved':(inv.isLate?'escalated':'new'))+'">'+(inv.fullyPaid?'Paid':(inv.isLate?'Late':'Open'))+'</span></label>';
+      }).join('');
+      return '<div class="contact-group'+(checked?' sel':'')+'">'
+        +'<label class="contact-head"><input type="checkbox" class="contact-check" data-debtor="'+d.id+'" '+(checked?'checked':'')+' />'
+        +'<span class="contact-name">'+d.name+'<span class="sub">ABN '+(d.abn||'—')+' · '+d.invoices.length+' invoice'+(d.invoices.length===1?'':'s')+'</span></span>'
+        +'<span class="contact-total">'+money(totalOwing)+'</span>'
+        +'<button type="button" class="chev" data-toggle="'+d.id+'">'+(checked?'▴':'▾')+'</button></label>'
+        +'<div class="contact-invoices" id="inv-'+d.id+'" '+(checked?'':'hidden')+'>'+rows+'</div>'
+        +'</div>';
+    }).join('') : '<div class="empty-note">No debtors with invoices yet. Import data above, or add debtors under Debtors &amp; Cases, to get started.</div>';
+    Array.prototype.forEach.call(list.querySelectorAll('.contact-check'), function(cb){
+      cb.addEventListener('change', function(){
+        var id = this.getAttribute('data-debtor');
+        stmtSelectedDebtors[id] = this.checked;
+        renderStatementContacts();
+      });
+    });
+    Array.prototype.forEach.call(list.querySelectorAll('.inv-check'), function(cb){
+      cb.addEventListener('change', function(){
+        stmtInvoiceOverride[this.getAttribute('data-inv')] = this.checked;
+        renderStatementPreview();
+      });
+    });
+    Array.prototype.forEach.call(list.querySelectorAll('[data-toggle]'), function(btn){
+      btn.addEventListener('click', function(e){
+        e.preventDefault(); e.stopPropagation();
+        var panel = document.getElementById('inv-'+this.getAttribute('data-toggle'));
+        panel.hidden = !panel.hidden;
+        this.textContent = panel.hidden ? '▾' : '▴';
+      });
+    });
+    renderStatementPreview();
+  }
+
+  function selectedStatementItems(){
+    var debtorIds = Object.keys(stmtSelectedDebtors).filter(function(id){ return stmtSelectedDebtors[id]; });
+    var items = [];
+    debtorIds.forEach(function(id){
+      var d = stmtDebtors.filter(function(x){ return x.id===id; })[0]; if(!d) return;
+      d.invoices.forEach(function(inv){ if(isInvoiceChecked(inv)) items.push(Object.assign({ debtor_name: d.name }, inv)); });
+    });
+    items.sort(function(a,b){ return new Date(a.due_date) - new Date(b.due_date); });
+    return { debtorIds: debtorIds, items: items };
+  }
+
+  function lateMetrics(debtorIds){
+    var cutoff = new Date(); cutoff.setMonth(cutoff.getMonth()-3);
+    var pool = [];
+    debtorIds.forEach(function(id){
+      var d = stmtDebtors.filter(function(x){ return x.id===id; })[0]; if(!d) return;
+      d.invoices.forEach(function(inv){ if(new Date(inv.due_date) >= cutoff) pool.push(inv); });
+    });
+    return {
+      total: pool.length,
+      lateCount: pool.filter(function(i){ return i.isLate; }).length,
+      lateValue: pool.filter(function(i){ return i.isLate; }).reduce(function(s,i){ return s+i.amount; }, 0),
+      totalValue: pool.reduce(function(s,i){ return s+i.amount; }, 0)
+    };
+  }
+
+  function renderStatementPreview(){
+    var sel = selectedStatementItems();
+    var recipEl = document.getElementById('stmtRecipientName');
+    if(!recipEl.dataset.manual){
+      var names = sel.debtorIds.map(function(id){ var d = stmtDebtors.filter(function(x){ return x.id===id; })[0]; return d ? d.name : ''; }).filter(Boolean);
+      recipEl.value = names.join(' + ');
+    }
+    document.getElementById('stmtSaveBtn').disabled = sel.items.length === 0;
+    document.getElementById('stmtPrintBtn').disabled = sel.items.length === 0;
+    document.getElementById('stmtSelectionSummary').textContent = sel.debtorIds.length
+      ? sel.debtorIds.length+' contact'+(sel.debtorIds.length===1?'':'s')+' merged · '+sel.items.length+' invoice'+(sel.items.length===1?'':'s')+' selected'
+      : 'No contacts selected yet.';
+
+    if(!sel.items.length){
+      document.getElementById('statementPaper').innerHTML = '<div class="empty-note">Select one or more contacts on the left — and the invoices to include — to build a statement.</div>';
+      return;
+    }
+    var total = sel.items.reduce(function(s,i){ return s+i.amount; }, 0);
+    var lm = lateMetrics(sel.debtorIds);
+    document.getElementById('statementPaper').innerHTML =
+      '<div class="lh-brand"><div><div class="n">DebtJet</div><div style="color:var(--text-muted);font-size:11px;">Account Statement — on behalf of '+currentOrg.name+'</div></div>'
+      +'<div class="addr">Statement @ '+fmt(new Date())+'<br>Attn: '+(recipEl.value||'—')+'</div></div>'
+      +'<table><thead><tr><th>Invoice</th><th>Description</th><th>Due</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>'
+      +sel.items.map(function(i){
+        return '<tr><td>'+(i.invoice_number||'—')+'<div style="font-size:10.5px;color:var(--text-muted);">'+i.debtor_name+'</div></td><td>'+(i.description||'')+'</td><td>'+fmt(i.due_date)+'</td><td class="num">'+money(i.amount)+'</td><td>'+(i.fullyPaid?'Paid':(i.isLate?'Late':'Open'))+'</td></tr>';
+      }).join('')
+      +'</tbody><tr><th colspan="3" style="text-align:right;">Total</th><th class="num">'+money(total)+'</th><th></th></tr></table>'
+      +'<div style="margin-top:14px;font-size:12px;color:var(--text-muted);">Late payment rate (rolling 3 months): '+lm.lateCount+' of '+lm.total+' invoices ('+(lm.total?Math.round(lm.lateCount/lm.total*100):0)+'%) · '+money(lm.lateValue)+' of '+money(lm.totalValue)+'</div>'
+      +'<div class="sign">Regards,<br><b>Accounts team</b><br>'+currentOrg.name+'<br>via DebtJet</div>';
+  }
+  document.getElementById('stmtRecipientName').addEventListener('input', function(){ this.dataset.manual = '1'; });
+
+  document.getElementById('stmtSaveBtn').addEventListener('click', async function(){
+    var sel = selectedStatementItems();
+    if(!sel.items.length) return;
+    var total = sel.items.reduce(function(s,i){ return s+i.amount; }, 0);
+    var lm = lateMetrics(sel.debtorIds);
+    var recipient = document.getElementById('stmtRecipientName').value.trim() || 'Statement recipient';
+    var itemsSnapshot = sel.items.map(function(i){ return { debtor_name: i.debtor_name, invoice_number: i.invoice_number, description: i.description, due_date: i.due_date, amount: i.amount, status: i.fullyPaid?'paid':(i.isLate?'late':'open') }; });
+    var r = await sb.from('statements').insert({
+      org_id: currentOrg.id, title: 'Statement — ' + recipient, recipient_name: recipient,
+      debtor_ids: sel.debtorIds, items: itemsSnapshot, total_amount: total,
+      late_count: lm.lateCount, late_value: lm.lateValue, created_by: session.user.id
+    });
+    if(r.error){ toast('Could not save statement: ' + r.error.message); return; }
+    toast('Statement saved for ' + recipient + '.');
+    await loadSavedStatements();
+  });
+  document.getElementById('stmtPrintBtn').addEventListener('click', function(){ window.print(); });
+
+  async function loadSavedStatements(){
+    var r = await sb.from('statements').select('*').eq('org_id', currentOrg.id).order('generated_at', { ascending: false }).limit(20);
+    savedStatements = r.data || [];
+    renderSavedStatements();
+  }
+  function renderSavedStatements(){
+    document.getElementById('savedStatementsBody').innerHTML = savedStatements.length ? savedStatements.map(function(s){
+      var n = (s.items||[]).length;
+      var pct = n ? Math.round((s.late_count||0)/n*100) : 0;
+      return '<tr><td>'+fmt(s.generated_at)+'</td><td class="name-cell">'+s.recipient_name+'</td><td class="num">'+money(s.total_amount)+'</td><td>'+n+'</td><td>'+pct+'%</td><td><button class="btn sm ghost" data-view-stmt="'+s.id+'">View →</button></td></tr>';
+    }).join('') : '<tr><td colspan="6" class="empty-note">No statements generated yet.</td></tr>';
+    Array.prototype.forEach.call(document.getElementById('savedStatementsBody').querySelectorAll('[data-view-stmt]'), function(btn){
+      btn.addEventListener('click', function(){ viewSavedStatement(this.getAttribute('data-view-stmt')); });
+    });
+  }
+  function viewSavedStatement(id){
+    var s = savedStatements.filter(function(x){ return x.id===id; })[0]; if(!s) return;
+    var recipEl = document.getElementById('stmtRecipientName');
+    recipEl.value = s.recipient_name; recipEl.dataset.manual = '1';
+    document.getElementById('statementPaper').innerHTML =
+      '<div class="lh-brand"><div><div class="n">DebtJet</div><div style="color:var(--text-muted);font-size:11px;">Account Statement — on behalf of '+currentOrg.name+'</div></div>'
+      +'<div class="addr">Statement @ '+fmt(s.generated_at)+'<br>Attn: '+s.recipient_name+'</div></div>'
+      +'<table><thead><tr><th>Invoice</th><th>Description</th><th>Due</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>'
+      +(s.items||[]).map(function(i){
+        return '<tr><td>'+(i.invoice_number||'—')+'<div style="font-size:10.5px;color:var(--text-muted);">'+(i.debtor_name||'')+'</div></td><td>'+(i.description||'')+'</td><td>'+fmt(i.due_date)+'</td><td class="num">'+money(i.amount)+'</td><td>'+(i.status==='paid'?'Paid':(i.status==='late'?'Late':'Open'))+'</td></tr>';
+      }).join('')
+      +'</tbody><tr><th colspan="3" style="text-align:right;">Total</th><th class="num">'+money(s.total_amount)+'</th><th></th></tr></table>'
+      +'<div style="margin-top:14px;font-size:12px;color:var(--text-muted);">Saved statement — '+fmt(s.generated_at)+'</div>'
+      +'<div class="sign">Regards,<br><b>Accounts team</b><br>'+currentOrg.name+'<br>via DebtJet</div>';
+    document.getElementById('stmtPrintBtn').disabled = false;
+    toast('Showing saved statement for ' + s.recipient_name + '.');
+  }
+
+  /* -- import -- */
+  function statementsImportInfo(provider){
+    var row = integrationRows.filter(function(x){ return x.provider===provider; })[0];
+    if(row && row.status === 'connected'){
+      toast(PROVIDER_META[provider].label + ' is connected, but pulling live invoices into statements isn\'t built yet — use Import CSV, or add debtors & invoices under Debtors & Cases.');
+    } else {
+      toast(PROVIDER_META[provider].label + ' isn\'t connected yet — opening Integrations.');
+      showView('integrations'); setActiveNav('integrations');
+    }
+  }
+  document.getElementById('stmtImportXeroBtn').addEventListener('click', function(){ statementsImportInfo('xero'); });
+  document.getElementById('stmtImportQbBtn').addEventListener('click', function(){ statementsImportInfo('quickbooks'); });
+  document.getElementById('stmtImportCsvBtn').addEventListener('click', function(){ document.getElementById('stmtCsvInput').click(); });
+
+  function parseCsv(text){
+    var rows = [], row = [], field = '', inQuotes = false;
+    for(var i=0;i<text.length;i++){
+      var ch = text[i];
+      if(inQuotes){
+        if(ch === '"'){ if(text[i+1] === '"'){ field += '"'; i++; } else inQuotes = false; }
+        else field += ch;
+      } else {
+        if(ch === '"') inQuotes = true;
+        else if(ch === ','){ row.push(field); field = ''; }
+        else if(ch === '\n' || ch === '\r'){ if(ch === '\r' && text[i+1] === '\n') i++; row.push(field); rows.push(row); row = []; field = ''; }
+        else field += ch;
+      }
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    return rows.filter(function(r){ return r.length > 1 || (r.length === 1 && r[0].trim() !== ''); });
+  }
+  document.getElementById('stmtCsvInput').addEventListener('change', async function(e){
+    var file = e.target.files[0]; if(!file) return;
+    var text = await file.text();
+    var rows = parseCsv(text);
+    if(rows.length < 2){ toast('No data rows found in that CSV.'); this.value=''; return; }
+    var header = rows[0].map(function(h){ return h.trim().toLowerCase(); });
+    var dataRows = rows.slice(1).filter(function(r){ return r.some(function(c){ return c && c.trim(); }); });
+    var idx = function(name){ return header.indexOf(name); };
+    var iName = idx('debtor_name'), iAbn = idx('abn'), iContact = idx('contact_name'), iEmail = idx('email'), iPhone = idx('phone'),
+        iInvNum = idx('invoice_number'), iDesc = idx('description'), iAmount = idx('amount'), iIssued = idx('issued_date'), iDue = idx('due_date');
+    if(iName < 0 || iAmount < 0 || iDue < 0){ toast('CSV needs at least debtor_name, amount and due_date columns.'); this.value=''; return; }
+    var imported = 0, failed = 0;
+    for(var r=0; r<dataRows.length; r++){
+      var row = dataRows[r];
+      var name = (row[iName]||'').trim();
+      if(!name){ continue; }
+      try{
+        var debtorId;
+        var existing = await sb.from('debtors').select('id').eq('org_id', currentOrg.id).ilike('name', name).limit(1).maybeSingle();
+        if(existing.data){ debtorId = existing.data.id; }
+        else {
+          var insD = await sb.from('debtors').insert({ org_id: currentOrg.id, name: name, abn: iAbn>=0?(row[iAbn]||null):null, contact_name: iContact>=0?(row[iContact]||null):null, email: iEmail>=0?(row[iEmail]||null):null, phone: iPhone>=0?(row[iPhone]||null):null }).select('id').single();
+          if(insD.error) throw insD.error;
+          debtorId = insD.data.id;
+        }
+        var caseId;
+        var existingCase = await sb.from('cases').select('id').eq('org_id', currentOrg.id).eq('debtor_id', debtorId).neq('status','resolved').limit(1).maybeSingle();
+        if(existingCase.data){ caseId = existingCase.data.id; }
+        else {
+          var insC = await sb.from('cases').insert({ org_id: currentOrg.id, debtor_id: debtorId, status: 'new', interest_rate: 0.10 }).select('id').single();
+          if(insC.error) throw insC.error;
+          caseId = insC.data.id;
+        }
+        var amt = parseFloat((row[iAmount]||'0').replace(/[^0-9.\-]/g,''));
+        var insI = await sb.from('invoices').insert({
+          org_id: currentOrg.id, debtor_id: debtorId, case_id: caseId,
+          invoice_number: iInvNum>=0 ? (row[iInvNum]||('IMP-'+(r+1))) : ('IMP-'+(r+1)),
+          description: iDesc>=0 ? (row[iDesc]||null) : null,
+          amount: isNaN(amt)?0:amt, issued_date: iIssued>=0 ? (row[iIssued]||null) : null,
+          due_date: row[iDue], status: 'open', source: 'csv_import'
+        });
+        if(insI.error) throw insI.error;
+        imported++;
+      } catch(err){ failed++; }
+    }
+    this.value = '';
+    toast('Imported ' + imported + ' invoice row(s)' + (failed ? (', ' + failed + ' failed') : '') + '.');
+    await loadCases();
+    await loadStatementsData();
+    renderDashboard();
+    renderCasesTable('all');
+    renderStatementContacts();
+  });
+
+  /* ---------- init ---------- */
+  (async function(){
+    updateAuthModeUI();
+    var s = await sb.auth.getSession();
+    session = s.data.session;
+    if(session){ await boot(); } else { await signInDemo(); }
+    if(new URLSearchParams(window.location.search).get('xero') === 'connected'){
+      history.replaceState(null, '', window.location.pathname);
+      if(currentOrg){ showView('integrations'); setActiveNav('integrations'); toast('Xero connected!'); }
+    }
+  })();
+})();
+</script>
