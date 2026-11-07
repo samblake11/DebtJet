@@ -169,9 +169,16 @@
   .pill.awaiting_response{background:var(--warning-soft);color:var(--warning);}
   .pill.payment_plan{background:var(--success-soft);color:var(--success);}
   .pill.escalated{background:var(--critical-soft);color:var(--critical);}
+  .pill.debt_recovery{background:var(--warning-soft);color:var(--warning);}
+  .pill.tribunal{background:var(--critical-soft);color:var(--critical);}
   .pill.resolved{background:var(--success-soft);color:var(--success);}
   .pill.connected{background:var(--success-soft);color:var(--success);}
   .pill.not_connected{background:var(--surface-alt);color:var(--text-muted);}
+
+  .pipeline{display:flex;margin-bottom:4px;}
+  .pipeline-step{flex:1;text-align:center;padding:9px 6px 11px;border-bottom:3px solid var(--border);font-size:11.5px;font-weight:600;color:var(--text-faint);}
+  .pipeline-step.done{color:var(--text-muted);border-color:var(--accent-soft);}
+  .pipeline-step.current{color:var(--accent-strong);border-color:var(--accent);}
 
   .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
   .chip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:12.5px;cursor:pointer;color:var(--text-muted);}
@@ -515,7 +522,18 @@
 
   var session = null, currentOrg = null, cases = [], letterTemplates = [], currentTpl = 'reminder';
   var stmtInvoices = [], stmtDebtors = [], stmtSelectedDebtors = {}, stmtInvoiceOverride = {}, savedStatements = [], integrationRows = [];
-  var STATUS_LABEL = {new:'New',letter_sent:'Letter sent',awaiting_response:'Awaiting response',payment_plan:'Payment plan',escalated:'Escalated',resolved:'Resolved'};
+  var STATUS_LABEL = {new:'New',letter_sent:'Letter sent',awaiting_response:'Awaiting response',payment_plan:'Payment plan',escalated:'Escalated',debt_recovery:'Debt recovery',tribunal:'Tribunal',resolved:'Resolved'};
+  var PIPELINE_STAGES = [{key:'statement',label:'Account Statement'},{key:'letter',label:'Letter of Demand'},{key:'debt_recovery',label:'Debt Recovery'},{key:'tribunal',label:'Tribunal'},{key:'resolved',label:'Resolved'}];
+  var TRIBUNAL_OPTIONS = ['VCAT (Victoria)','QCAT (Queensland)','NCAT (New South Wales)','SAT (Western Australia)','SACAT (South Australia)','TASCAT (Tasmania)','ACAT (ACT)','NTCAT (Northern Territory)','Magistrates/Local Court','Other'];
+  var currentCaseFilter = 'all';
+  function pipelineIndex(status){
+    if(status==='new') return 0;
+    if(status==='letter_sent'||status==='awaiting_response'||status==='payment_plan') return 1;
+    if(status==='debt_recovery'||status==='escalated') return 2;
+    if(status==='tribunal') return 3;
+    if(status==='resolved') return 4;
+    return 0;
+  }
 
   function money(n){ n = Number(n)||0; return '$'+n.toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function fmt(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}); }
@@ -628,7 +646,7 @@
   /* ---------- data loading ---------- */
   async function loadCases(){
     var r = await sb.from('cases')
-      .select('id, status, interest_rate, opened_at, debtors(id,name,abn,contact_name,email,phone), invoices(id,invoice_number,description,amount,due_date,issued_date,status)')
+      .select('id, status, interest_rate, opened_at, tribunal_body, debtors(id,name,abn,contact_name,email,phone), invoices(id,invoice_number,description,amount,due_date,issued_date,status)')
       .eq('org_id', currentOrg.id)
       .order('opened_at', { ascending: true });
     if(r.error){ toast('Could not load cases: ' + r.error.message); cases = []; return; }
@@ -639,7 +657,7 @@
       var daysOverdue = open.reduce(function(mx,i){ return Math.max(mx, Math.round((today - new Date(i.due_date)) / 86400000)); }, 0);
       var interest = Math.round(principal * Number(c.interest_rate) * Math.max(daysOverdue,0) / 365 * 100) / 100;
       return {
-        id: c.id, status: c.status, interestRate: Number(c.interest_rate),
+        id: c.id, status: c.status, interestRate: Number(c.interest_rate), tribunalBody: c.tribunal_body,
         debtor: c.debtors || {}, invoices: open,
         invoiceNumber: open[0] ? open[0].invoice_number : '—',
         dueDate: open[0] ? open[0].due_date : null,
@@ -661,7 +679,7 @@
       '<div class="kpi"><div class="label">Total outstanding</div><div class="value">'+money(totalOutstanding)+'</div><div class="delta">Across '+cases.length+' open cases</div></div>'+
       '<div class="kpi"><div class="label">Accrued interest</div><div class="value">'+money(totalInterest)+'</div><div class="delta">Live, computed from due dates</div></div>'+
       '<div class="kpi"><div class="label">Letter templates</div><div class="value">'+letterTemplates.length+'</div><div class="delta">reminder / first / final</div></div>'+
-      '<div class="kpi"><div class="label">Cases escalated</div><div class="value">'+cases.filter(function(c){return c.status==='escalated';}).length+'</div><div class="delta">Tribunal filing currently paused</div></div>';
+      '<div class="kpi"><div class="label">In recovery / tribunal</div><div class="value">'+cases.filter(function(c){return c.status==='debt_recovery'||c.status==='tribunal'||c.status==='escalated';}).length+'</div><div class="delta">'+cases.filter(function(c){return c.status==='tribunal';}).length+' at tribunal</div></div>';
 
     var buckets = [
       {label:'0–30 days', cls:'b1', min:0, max:30},
@@ -686,14 +704,15 @@
   }
 
   /* ---------- cases list ---------- */
-  document.getElementById('caseFilters').innerHTML = ['all','new','letter_sent','awaiting_response','payment_plan','escalated'].map(function(f,i){
+  document.getElementById('caseFilters').innerHTML = ['all','new','letter_sent','awaiting_response','payment_plan','debt_recovery','tribunal'].map(function(f,i){
     return '<button class="chip'+(i===0?' active':'')+'" data-filter="'+f+'">'+(f==='all'?'All':STATUS_LABEL[f])+'</button>';
   }).join('');
   document.getElementById('caseFilters').addEventListener('click', function(e){
     var btn = e.target.closest('.chip'); if(!btn) return;
     Array.prototype.forEach.call(document.querySelectorAll('#caseFilters .chip'), function(c){c.classList.remove('active');});
     btn.classList.add('active');
-    renderCasesTable(btn.getAttribute('data-filter'));
+    currentCaseFilter = btn.getAttribute('data-filter');
+    renderCasesTable(currentCaseFilter);
   });
 
   function renderCasesTable(filter){
@@ -706,7 +725,29 @@
   }
 
   /* ---------- case detail ---------- */
-  var EVENT_TONE = { escalated:'crit', no_response:'warn', letter_sent:'warn', payment_plan_accepted:'ok', invoice_issued:'ok', invoice_due:'ok', reminder_sent:'ok', portal_viewed:'ok', note_added:'ok', payment_logged:'ok' };
+  var EVENT_TONE = { escalated:'crit', no_response:'warn', letter_sent:'warn', payment_plan_accepted:'ok', invoice_issued:'ok', invoice_due:'ok', reminder_sent:'ok', portal_viewed:'ok', note_added:'ok', payment_logged:'ok', debt_recovery_started:'warn', tribunal_referred:'crit', resolved:'ok' };
+
+  function renderPipeline(c){
+    var idx = pipelineIndex(c.status);
+    return '<div class="pipeline">'+PIPELINE_STAGES.map(function(s,i){
+      var cls = i<idx ? 'done' : (i===idx ? 'current' : '');
+      return '<div class="pipeline-step '+cls+'">'+s.label+'</div>';
+    }).join('')+'</div>';
+  }
+  function renderPipelineActions(c){
+    if(c.status === 'resolved') return '<div class="empty-note" style="margin-top:10px;">This case is resolved.</div>';
+    var html = '<div class="action-row" style="margin-top:10px;align-items:center;">';
+    if(c.status === 'tribunal'){
+      html += '<div class="info-box" style="margin:0;"><div class="k">Referred to</div><div class="v small">'+(c.tribunalBody||'—')+'</div></div>';
+    } else if(c.status === 'debt_recovery' || c.status === 'escalated'){
+      html += '<select id="tribunalSelect">'+TRIBUNAL_OPTIONS.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('')+'</select>'
+        + '<button class="btn primary" id="toTribunalBtn">Refer to tribunal</button>';
+    } else {
+      html += '<button class="btn primary" id="toDebtRecoveryBtn">Move to Debt Recovery</button>';
+    }
+    html += '<button class="btn" id="markResolvedBtn">Mark resolved</button></div>';
+    return html;
+  }
 
   async function openCase(id){
     var c = cases.filter(function(x){return x.id===id;})[0];
@@ -717,6 +758,9 @@
       +'<button class="back-link" id="backToCases">← Back to Debtors &amp; Cases</button>'
       +'<div class="detail-head"><div><h2>'+c.debtor.name+'</h2><div class="meta">ABN '+(c.debtor.abn||'—')+' · '+(c.debtor.contact_name||'')+' · '+(c.debtor.email||'')+' · '+(c.debtor.phone||'')+'</div></div>'
         +'<div class="action-row"><button class="btn primary" data-goto="letters" data-preselect="'+c.id+'">Send letter of demand</button></div></div>'
+      +'<div class="card" style="margin-bottom:16px;"><div class="card-head"><h3>Escalation pipeline</h3></div><div class="card-body">'
+        +renderPipeline(c) + renderPipelineActions(c)
+      +'</div></div>'
       +'<div class="info-grid">'
         +'<div class="info-box"><div class="k">Total owing</div><div class="v">'+money(c.total)+'</div></div>'
         +'<div class="info-box"><div class="k">Principal</div><div class="v">'+money(c.amount)+'</div></div>'
@@ -747,7 +791,32 @@
       if(r.error){ toast('Could not log payment: ' + r.error.message); return; }
       await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'payment_logged', title: 'Payment logged', body: money(amt) + ' recorded manually', created_by: session.user.id });
       toast('Payment logged.');
-      await loadCases(); openCase(c.id); renderDashboard();
+      await loadCases(); openCase(c.id); renderDashboard(); renderCasesTable(currentCaseFilter);
+    });
+    var toDR = document.getElementById('toDebtRecoveryBtn');
+    if(toDR) toDR.addEventListener('click', async function(){
+      var r = await sb.from('cases').update({ status: 'debt_recovery' }).eq('id', c.id);
+      if(r.error){ toast('Could not update case: ' + r.error.message); return; }
+      await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'debt_recovery_started', title: 'Moved to Debt Recovery', body: 'Escalated beyond letters of demand.', created_by: session.user.id });
+      toast('Case moved to Debt Recovery.');
+      await loadCases(); openCase(c.id); renderDashboard(); renderCasesTable(currentCaseFilter);
+    });
+    var toTrib = document.getElementById('toTribunalBtn');
+    if(toTrib) toTrib.addEventListener('click', async function(){
+      var body = document.getElementById('tribunalSelect').value;
+      var r = await sb.from('cases').update({ status: 'tribunal', tribunal_body: body }).eq('id', c.id);
+      if(r.error){ toast('Could not update case: ' + r.error.message); return; }
+      await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'tribunal_referred', title: 'Referred to ' + body, body: 'Case escalated to ' + body + ' for formal hearing.', created_by: session.user.id });
+      toast('Referred to ' + body + '.');
+      await loadCases(); openCase(c.id); renderDashboard(); renderCasesTable(currentCaseFilter);
+    });
+    var markRes = document.getElementById('markResolvedBtn');
+    if(markRes) markRes.addEventListener('click', async function(){
+      var r = await sb.from('cases').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', c.id);
+      if(r.error){ toast('Could not update case: ' + r.error.message); return; }
+      await sb.from('case_events').insert({ org_id: currentOrg.id, case_id: c.id, event_type: 'resolved', title: 'Case resolved', body: 'Marked resolved.', created_by: session.user.id });
+      toast('Case marked resolved.');
+      await loadCases(); openCase(c.id); renderDashboard(); renderCasesTable(currentCaseFilter);
     });
   }
 
